@@ -25,10 +25,10 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Initialize AI Engine
+# Initialize AI Engine - Updated to the active 2026 model
 if "GEMINI_API_KEY" in st.secrets:
     genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-    model = genai.GenerativeModel('gemini-2.5-flash')
+    model = genai.GenerativeModel('gemini-3.5-flash')
 else:
     st.warning("⚠️ Connect your Gemini API Key in Streamlit Settings -> Secrets.")
     model = None
@@ -37,8 +37,14 @@ else:
 st.title("🎯 Khemka Life OS")
 st.caption("Master Command Center | Animesh Khemka")
 
-# Quick Nudge System (Top of App)
-st.sidebar.markdown("### ⏰ Daily Reminders & Triggers")
+# Central Historical Data Hub (Sidebar File Attachment)
+st.sidebar.markdown("### 📂 Master History Vault")
+history_file = st.sidebar.file_uploader("Upload Life History Excel/PDF:", type=["xlsx", "csv", "pdf"], key="hist_vault")
+history_context = ""
+if history_file:
+    st.sidebar.success("Historic context loaded!")
+    history_context = "Use the following background historical records from Animesh's master files to contextualize your advice: "
+
 if st.sidebar.button("✨ Get Micro-Nudge & Quote"):
     if model:
         nudge_prompt = "Give Animesh Khemka a powerful, highly specific, 2-sentence morning motivational quote and 3 rapid health reminders (e.g., water, posture, screen-time limit) for today."
@@ -56,14 +62,28 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
 with tab1:
     st.header("💪 Health & Fitness Tracker")
     h_score = st.slider("Rate your physical state today", 1, 10, 7, key="h_sl")
-    h_input = st.text_area("Log meals, junk food temptations, workouts, or symptoms:", placeholder="e.g., Had a light salad for lunch, felt low energy around 4 PM.", key="h_txt")
-    h_file = st.file_uploader("Upload medical reports or fitness data:", type=["pdf", "png", "jpg"], key="h_fl")
+    
+    st.subheader("Log Data")
+    h_input = st.text_area("Type updates or log junk food temptations:", placeholder="e.g., Had a light salad for lunch, felt low energy around 4 PM.", key="h_txt")
+    
+    st.caption("🎤 Or record a quick voice log:")
+    audio_log = st.audio_input("Record Audio Log", key="health_audio")
+    
+    h_file = st.file_uploader("Upload medical reports or fitness device screenshots:", type=["pdf", "png", "jpg"], key="h_fl")
     
     if st.button("Get Expert Health Alignment Advice", use_container_width=True):
         if model:
-            with st.spinner("Processing physical logs..."):
-                prompt = f"Act as an elite athletic doctor. Animesh rated his health {h_score}/10. User logs: {h_input}. Give specific, targeted suggestions by body part, lifestyle tweaks, and strict habits to reach a 10/10."
-                st.info(model.generate_content(prompt).text)
+            with st.spinner("Processing logs..."):
+                prompt = f"{history_context} Act as an elite health coach. Animesh rated his health {h_score}/10. Notes: {h_input}. Give specific, targeted suggestions by body part and strict adjustments to reach a 10/10."
+                
+                # Combine standard text prompt with audio file if recorded
+                payload = [prompt]
+                if audio_log:
+                    payload.append(audio_log)
+                if h_file:
+                    payload.append(h_file)
+                    
+                st.info(model.generate_content(payload).text)
 
 # ==========================================
 # 2. LEARNING & DEVELOPMENT
@@ -100,7 +120,7 @@ with tab3:
     if st.button("Consult Corporate Strategy Engine", use_container_width=True):
         if model:
             with st.spinner("Analyzing operational directives..."):
-                prompt = f"Act as an elite McKinsey business strategist. Venture: {biz_name}. Momentum Score: {biz_score}/10. Current strategy/problem: {biz_strategy}. Provide a detailed, long-term roadmap, mitigation strategy for friction points, and unique product utility ideas to succeed globally."
+                prompt = f"{history_context} Act as an elite McKinsey business strategist. Venture: {biz_name}. Momentum Score: {biz_score}/10. Current strategy/challenge: {biz_strategy}. Provide a comprehensive strategy."
                 st.info(model.generate_content(prompt).text)
 
 # ==========================================
@@ -120,7 +140,6 @@ with tab4:
     if st.button("Analyze Astrological Chart", use_container_width=True):
         if model and astro_file:
             with st.spinner("Decoding chart arrays..."):
-                # Pass file to model safely
                 prompt = "Analyze this astrological data/chart image. Provide core personal insights, upcoming energetic shifts, and highly practical daily remedies/routines to optimize performance."
                 st.info(model.generate_content([prompt, astro_file]).text)
         elif not astro_file:
@@ -150,7 +169,6 @@ with tab6:
         if model:
             with st.spinner("Fetching live market vectors..."):
                 try:
-                    # Safely sample key indices via yfinance
                     nifty = yf.Ticker("^NSEI").history(period="2d")
                     sensex = yf.Ticker("^BSESN").history(period="2d")
                     nifty_close = nifty['Close'].iloc[-1] if not nifty.empty else "N/A"
@@ -176,7 +194,6 @@ with tab6:
                     ma_50 = hist['Close'].rolling(50).mean().iloc[-1]
                     ma_200 = hist['Close'].rolling(200).mean().iloc[-1]
                     
-                    # Extract safe baseline metrics from yfinance
                     metrics_summary = f"""
                     Ticker: {ticker_input}
                     Current Price: ₹{current_price:.2f}
