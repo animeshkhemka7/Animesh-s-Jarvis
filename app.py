@@ -8,40 +8,6 @@ import time
 from io import BytesIO
 from datetime import datetime
 
-# ==========================================
-# 🌐 PERMANENT CLOUD LOCKER SYNCHRONIZATION CORE
-# ==========================================
-LOCKER_ID = "brand_leather_goods_secret_box_2026"
-LOCKER_URL = f"https://kvdb.io/{LOCKER_ID}/dashboard_memory"
-
-def load_from_locker():
-    try:
-        response = requests.get(LOCKER_URL)
-        if response.status_code == 200:
-            return response.json()
-    except:
-        pass
-    return []
-
-def save_to_locker(data_list):
-    try:
-        requests.post(LOCKER_URL, json=data_list)
-        return True
-    except:
-        return False
-
-# Initialize cloud locker connection into active memory
-if 'saved_entries' not in st.session_state:
-    st.session_state.saved_entries = load_from_locker()
-
-# Convert the cloud locker database into the active DataFrame the app layout expects
-if st.session_state.saved_entries:
-    history_df = pd.DataFrame(st.session_state.saved_entries)
-else:
-    history_df = pd.DataFrame(columns=["Timestamp", "Section", "Score", "Notes"])
-
-st.session_state["cached_db"] = history_df
-
 # 1. Responsive Shell Configuration
 st.set_page_config(page_title="Khemka Life OS", page_icon="🎯", layout="centered", initial_sidebar_state="collapsed")
 
@@ -116,29 +82,49 @@ def log_row_to_csv(row_dict, filename="logs.csv"):
     }
     requests.put(f"https://api.github.com/repos/{REPO}/contents/{filename}", headers=headers, json=payload)
 
-# Dual-Routing Sync Engine (Locks data into Cloud Locker instantly, then updates GitHub)
-def universal_data_write(row_dict):
-    if 'saved_entries' not in st.session_state:
-        st.session_state.saved_entries = load_from_locker()
-    st.session_state.saved_entries.append(row_dict)
-    save_to_locker(st.session_state.saved_entries)
+def load_live_database_uncached():
+    if not TOKEN or not REPO: return pd.DataFrame(columns=["Timestamp", "Section", "Score", "Notes"])
+    url = f"https://api.github.com/repos/{REPO}/contents/logs.csv?t={int(time.time())}"
+    headers = {
+        "Authorization": f"token {TOKEN}",
+        "Accept": "application/vnd.github.v3+json",
+        "Cache-Control": "no-cache",
+        "Pragma": "no-cache",
+        "If-None-Match": ""
+    }
     try:
-        log_row_to_csv(row_dict)
+        res = requests.get(url, headers=headers)
+        if res.status_code == 200:
+            content_b64 = res.json().get("content", "")
+            content_str = base64.b64decode(content_b64).decode("utf-8")
+            return pd.read_csv(BytesIO(content_str.encode("utf-8")))
     except:
         pass
+    return pd.DataFrame(columns=["Timestamp", "Section", "Score", "Notes"])
+
+# Real-Time Engine: Instantly saves to memory so screens don't wipe out, then updates cloud
+def commit_new_log(row_dict):
+    if st.session_state["cached_db"].empty:
+        st.session_state["cached_db"] = pd.DataFrame([row_dict])
+    else:
+        st.session_state["cached_db"] = pd.concat([st.session_state["cached_db"], pd.DataFrame([row_dict])], ignore_index=True)
+    log_row_to_csv(row_dict)
 
 # ==========================================
-# MASTER UI INITIALIZATION
+# MASTER DATA INITIALIZATION
 # ==========================================
+if "cached_db" not in st.session_state:
+    st.session_state["cached_db"] = load_live_database_uncached()
+
 st.title("🎯 Khemka Life OS")
 
 # Master High-Priority Synchronize Command Trigger (Top Block)
 st.markdown('<div class="sync-btn">', unsafe_allow_html=True)
 if st.button("🔄 FORCE SYNC ALL DEVICES NOW", use_container_width=True):
-    with st.spinner("Synchronizing cloud locker matrices..."):
-        st.session_state.saved_entries = load_from_locker()
-        st.success("App updated with latest data exchanges!")
-        time.sleep(0.4)
+    with st.spinner("Downloading fresh database arrays from cloud..."):
+        st.session_state["cached_db"] = load_live_database_uncached()
+        st.success("Synchronized! All laptop and mobile entries are up to date.")
+        time.sleep(0.5)
         st.rerun()
 st.markdown('</div>', unsafe_allow_html=True)
 
@@ -155,9 +141,13 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
 # ==========================================
 with tab1:
     st.header("💪 Health & Fitness Vault")
+    
     if not history_df.empty:
         h_data = history_df[history_df["Section"] == "Health"]
-        if not h_data.empty: st.line_chart(h_data.set_index("Timestamp")["Score"])
+        if not h_data.empty: 
+            st.line_chart(h_data.set_index("Timestamp")["Score"])
+            with st.expander("📂 View Archived Health Logs & Files"):
+                st.dataframe(h_data[["Timestamp", "Score", "Notes"]], use_container_width=True)
 
     h_score = st.slider("Rate physical health score today", 1, 10, 7, key="h_slider")
     h_input = st.text_area("Type lifestyle or workout notes:", key="h_notes")
@@ -180,16 +170,15 @@ with tab1:
                 if f.type in ["image/png", "image/jpeg", "application/pdf"]:
                     ai_payload.append({"mime_type": f.type, "data": f_bytes})
                     
-        universal_data_write({"Timestamp": timestamp, "Section": "Health", "Score": h_score, "Notes": f"{h_input} | Batch: {', '.join(names_list)}"})
-        st.success("🎉 Health logs successfully archived & synced!")
+        commit_new_log({"Timestamp": timestamp, "Section": "Health", "Score": h_score, "Notes": f"{h_input} | Batch: {', '.join(names_list)}"})
+        st.success("Synced to cloud storage!")
         
         if model:
             try:
                 st.info(model.generate_content(ai_payload).text)
-            except Exception as ai_error:
-                st.warning("⚠️ Files saved! However, the AI engine is momentarily at capacity and couldn't compile a live health summary.")
-                
-        time.sleep(0.4)
+            except Exception:
+                st.warning("⚠️ Files saved! However, the AI engine is momentarily at capacity to compile a live summary.")
+        time.sleep(0.5)
         st.rerun()
 
 # ==========================================
@@ -197,9 +186,13 @@ with tab1:
 # ==========================================
 with tab2:
     st.header("📚 Master Knowledge Bank")
+    
     if not history_df.empty:
         l_data = history_df[history_df["Section"] == "Learning"]
         st.metric(label="Total Library Assets Stacked", value=len(l_data))
+        if not l_data.empty:
+            with st.expander("📂 View Archived Books & Summaries Directory"):
+                st.dataframe(l_data[["Timestamp", "Notes"]], use_container_width=True)
         
     media_name = st.text_input("Source Title:")
     uploaded_books = st.file_uploader("Drop books or summaries in bulk:", type=["pdf", "docx", "xlsx", "txt"], accept_multiple_files=True, key="l_bulk")
@@ -215,15 +208,14 @@ with tab2:
                     if b.type in ["application/pdf", "text/plain"]:
                         ai_payload.append({"mime_type": b.type, "data": b_bytes})
                         
-                universal_data_write({"Timestamp": timestamp, "Section": "Learning", "Score": 10, "Notes": f"Batch: {media_name}"})
+                commit_new_log({"Timestamp": timestamp, "Section": "Learning", "Score": 10, "Notes": f"Batch: {media_name}"})
                 st.success("🎉 Library components successfully archived & synced!")
                 
                 try:
                     st.write(model.generate_content(ai_payload).text)
-                except Exception as ai_error:
-                    st.warning("⚠️ Documents saved to database! The AI is temporarily processing too many text tokens right now to print a summary.")
-                    
-                time.sleep(0.4)
+                except Exception:
+                    st.warning("⚠️ Documents uploaded cleanly! The AI model is experiencing high load and skipped text generation.")
+                time.sleep(0.5)
                 st.rerun()
 
 # ==========================================
@@ -231,9 +223,13 @@ with tab2:
 # ==========================================
 with tab3:
     st.header("🏢 Venture Strategy Dashboard")
+    
     if not history_df.empty:
         b_data = history_df[history_df["Section"] == "Business"]
-        if not b_data.empty: st.line_chart(b_data.set_index("Timestamp")["Score"])
+        if not b_data.empty: 
+            st.line_chart(b_data.set_index("Timestamp")["Score"])
+            with st.expander("📂 View Strategic Moves & Invoice Logs"):
+                st.dataframe(b_data[["Timestamp", "Score", "Notes"]], use_container_width=True)
             
     biz_name = st.text_input("Venture Name:", value="Premium Vegan Leather Goods Brand")
     biz_score = st.slider("Current Execution Momentum", 1, 10, 7, key="b_slider")
@@ -247,16 +243,15 @@ with tab3:
             for bd in biz_docs:
                 save_file_to_github(bd.getvalue(), f"biz_{biz_name}_{bd.name}")
                 
-        universal_data_write({"Timestamp": timestamp, "Section": "Business", "Score": biz_score, "Notes": biz_notes})
+        commit_new_log({"Timestamp": timestamp, "Section": "Business", "Score": biz_score, "Notes": biz_notes})
         st.success("🎉 Venture metrics archived & broadcasted!")
         
         if model:
             try:
                 st.info(model.generate_content(ai_payload).text)
-            except Exception as ai_error:
-                st.warning("⚠️ Strategy file logs synced cleanly! The AI calculation grid is temporarily full and couldn't process feedback.")
-                
-        time.sleep(0.4)
+            except Exception:
+                st.warning("⚠️ Strategy metrics recorded to cloud directory! AI analysis module skipped due to query capacity limits.")
+        time.sleep(0.5)
         st.rerun()
 
 # ==========================================
@@ -268,8 +263,8 @@ with tab4:
         if model:
             try:
                 st.info(model.generate_content("Provide an executive mindset validation drill, deep rhythmic breathing guidelines, and explicit protocols to maintain absolute workspace concentration and isolate energy from critical family members.").text)
-            except Exception as ai_error:
-                st.warning("⚠️ AI core busy. Focus drill protocol: Center focus, target 4-7-8 breathing mechanics, and maintain clean perimeter barriers.")
+            except Exception:
+                st.warning("⚠️ Focus drill protocol: Center alignment focus, execute deep rhythmic 4-7-8 deep breathing cycles, and establish operational privacy.")
             
     st.markdown("---")
     st.subheader("🌌 Natal Chart Synthesis Drawer")
@@ -285,24 +280,28 @@ with tab4:
             st.success("Planetary chart layers uploaded to file repository.")
             try:
                 st.info(model.generate_content(ai_payload).text)
-            except Exception as ai_error:
-                st.warning("⚠️ Alignment assets are safely logged! The astrological model engine is experiencing heavy rate traffic now.")
+            except Exception:
+                st.warning("⚠️ Alignment assets logged cleanly! The parsing grid model is processing heavy query streams now.")
 
 # ==========================================
 # 5. RELATIONSHIPS MODULE
 # ==========================================
 with tab5:
     st.header("🤝 Interpersonal Network Alignment")
+    
     if not history_df.empty:
         r_data = history_df[history_df["Section"] == "Relationships"]
-        if not r_data.empty: st.line_chart(r_data.set_index("Timestamp")["Score"])
+        if not r_data.empty: 
+            st.line_chart(r_data.set_index("Timestamp")["Score"])
+            with st.expander("📂 View Historic Relational Notes"):
+                st.dataframe(r_data[["Timestamp", "Score", "Notes"]], use_container_width=True)
         
     r_score = st.slider("Rate relational harmony level", 1, 10, 7, key="r_slider")
     r_notes = st.text_area("Key communication metrics or dynamics tracker:")
     if st.button("Archive Relationship Log Entry", use_container_width=True):
-        universal_data_write({"Timestamp": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M"), "Section": "Relationships", "Score": r_score, "Notes": r_notes})
+        commit_new_log({"Timestamp": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M"), "Section": "Relationships", "Score": r_score, "Notes": r_notes})
         st.success("🎉 Network logs compiled and safely synced!")
-        time.sleep(0.4)
+        time.sleep(0.5)
         st.rerun()
 
 # ==========================================
@@ -316,8 +315,8 @@ with tab6:
                 nifty_close = yf.Ticker("^NSEI").history(period="2d")['Close'].iloc[-1]
                 try:
                     st.info(model.generate_content(f"Provide an assertive technical market layout brief for an Indian equities operator. Index validation state: Nifty 50 close tracking near {nifty_close}. Highlight 3 alpha trading sectors for outperformance.").text)
-                except Exception as ai_error:
-                    st.warning(f"⚠️ Index metrics obtained (Nifty: {nifty_close}), but AI sectors analysis is currently hitting maximum free quota constraints.")
+                except Exception:
+                    st.warning(f"⚠️ Live validation index metrics pulled (Nifty tracking: ₹{nifty_close:.2f}). AI sector parsing overloaded.")
             except Exception as e: st.error(f"Scraper error: {e}")
                     
     st.markdown("---")
@@ -331,8 +330,8 @@ with tab6:
                 if model:
                     try:
                         st.write(model.generate_content(f"Hedge fund analysis report for {ticker}. Metrics: {metrics}. Provide explicit target support layers and a clear Buy/Hold/Sell recommendation.").text)
-                    except Exception as ai_error:
-                        st.warning("⚠️ Raw metrics extracted! Comprehensive stock evaluation report skipped due to sudden AI query limits.")
+                    except Exception:
+                        st.warning("⚠️ Technical pricing layer complete! AI target forecast models are momentarily offline.")
         except Exception as err: st.error(f"Audit error: {err}")
 
     st.markdown("---")
@@ -348,15 +347,19 @@ with tab6:
 # ==========================================
 with tab7:
     st.header("🚀 Strategic Goal Vectoring")
+    
     if not history_df.empty:
         g_data = history_df[history_df["Section"] == "Goals"]
-        if not g_data.empty: st.line_chart(g_data.set_index("Timestamp")["Score"])
+        if not g_data.empty: 
+            st.line_chart(g_data.set_index("Timestamp")["Score"])
+            with st.expander("📂 View Long Term Directive Archives"):
+                st.dataframe(g_data[["Timestamp", "Notes"]], use_container_width=True)
         
     vision_input = st.text_area("Define master 5 & 10-year blueprints:", value="Build a premier international sustainable design and luxury leather export empire with established corporate gifting logistics footprint across India.")
     if st.button("Update Long-Term Directives", use_container_width=True):
-        universal_data_write({"Timestamp": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M"), "Section": "Goals", "Score": 10, "Notes": vision_input})
+        commit_new_log({"Timestamp": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M"), "Section": "Goals", "Score": 10, "Notes": vision_input})
         st.success("🎉 Vision matrices locked in and synchronized globally!")
-        time.sleep(0.4)
+        time.sleep(0.5)
         st.rerun()
 
 # ==========================================
@@ -378,7 +381,7 @@ st.write("---")
 st.write("### 🗲 Universal Cross-Device Entry Pad")
 
 sync_section = st.selectbox("Assign log to module:", ["Business", "Learning", "Health", "Goals", "Relationships"], key="m_sec")
-sync_notes = st.text_area("Type updates, logs, or paste Google Drive asset links here:", placeholder="Example: Placed design updates for women's clutches here. Link: https://drive.google.com/...", key="m_notes")
+sync_notes = st.text_area("Type updates, logs, or paste Google Drive asset links here:", placeholder="Example: Placed catalog design layout updates here. Link: https://drive.google.com/...", key="m_notes")
 sync_score = st.slider("Assign score status value:", 1, 10, 10, key="m_score")
 
 if st.button("🟢 FORCE SYNC ALL DEVICES NOW"):
@@ -391,15 +394,7 @@ if st.button("🟢 FORCE SYNC ALL DEVICES NOW"):
         "Notes": sync_notes if sync_notes else "Manual Global Device Sync Verification Triggered"
     }
     
-    st.session_state.saved_entries = load_from_locker()
-    st.session_state.saved_entries.append(new_entry)
-    save_to_locker(st.session_state.saved_entries)
-    
-    try:
-        log_row_to_csv(new_entry)
-    except:
-        pass
-        
+    commit_new_log(new_entry)
     st.success("✨ Everything synchronized flawlessly! Data securely saved and broadcasted to all terminal instances.")
     time.sleep(0.5)
     st.rerun()
