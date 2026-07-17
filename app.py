@@ -2,245 +2,294 @@ import streamlit as st
 import google.generativeai as genai
 import pandas as pd
 import yfinance as yf
-from datetime import datetime
+import requests
+import base64
+import json
+from io import BytesIO
 
-# 1. Page & Mobile View Configuration
-st.set_page_config(
-    page_title="Khemka Life OS",
-    page_icon="🎯",
-    layout="centered",
-    initial_sidebar_state="collapsed"
-)
+# 1. Page Configuration for Mobile
+st.set_page_config(page_title="Khemka Life OS", page_icon="🎯", layout="centered", initial_sidebar_state="collapsed")
 
-# Custom CSS to make it feel like a premium native mobile app
+# Premium Mobile UI Theme
 st.markdown("""
     <style>
-        #MainMenu {visibility: hidden;}
-        footer {visibility: hidden;}
-        header {visibility: hidden;}
+        #MainMenu {visibility: hidden;} footer {visibility: hidden;} header {visibility: hidden;}
         .block-container {padding-top: 1rem; padding-bottom: 2rem;}
-        .stButton>button {border-radius: 8px; height: 3em; font-weight: bold;}
-        .stTabs [data-baseweb="tab-list"] {gap: 8px; justify-content: space-around;}
-        .stTabs [data-baseweb="tab"] {padding: 8px 12px; background-color: #f0f2f6; border-radius: 8px;}
+        .stButton>button {border-radius: 8px; height: 3em; font-weight: bold; background-color: #4F46E5; color: white;}
+        .stTabs [data-baseweb="tab-list"] {gap: 4px; justify-content: space-around;}
+        .stTabs [data-baseweb="tab"] {padding: 6px 10px; background-color: #F3F4F6; border-radius: 6px; font-size: 12px;}
     </style>
 """, unsafe_allow_html=True)
 
-# Initialize AI Engine - Updated to the active 2026 model
-if "GEMINI_API_KEY" in st.secrets:
-    genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+# Credentials Verification
+TOKEN = st.secrets.get("GITHUB_TOKEN", "")
+REPO = st.secrets.get("GITHUB_REPO", "")
+API_KEY = st.secrets.get("GEMINI_API_KEY", "")
+
+if API_KEY:
+    genai.configure(api_key=API_KEY)
     model = genai.GenerativeModel('gemini-3.5-flash')
 else:
-    st.warning("⚠️ Connect your Gemini API Key in Streamlit Settings -> Secrets.")
+    st.error("⚠️ Gemini API Key missing in Settings -> Secrets.")
     model = None
 
-# Master Header
+# ==========================================
+# GITHUB PERMANENT STORAGE ENGINE FUNCTIONS
+# ==========================================
+def save_file_to_github(file_bytes, filename, folder="vault"):
+    """Permanently saves any file uploaded from mobile directly to GitHub Repository"""
+    if not TOKEN or not REPO:
+        return False
+    
+    path = f"{folder}/{filename}"
+    url = f"https://api.github.com/repos/{REPO}/contents/{path}"
+    headers = {"Authorization": f"token {TOKEN}", "Accept": "application/vnd.github.v3+json"}
+    
+    # Check if file already exists to get its unique tracking ID (sha)
+    res = requests.get(url, headers=headers)
+    sha = res.json().get("sha") if res.status_code == 200 else None
+    
+    encoded_content = base64.b64encode(file_bytes).decode("utf-8")
+    payload = {"message": f"App Log: Saved {filename}", "content": encoded_content}
+    if sha:
+        payload["sha"] = sha
+        
+    response = requests.put(url, headers=headers, json=payload)
+    return response.status_code in [200, 201]
+
+def log_row_to_csv(row_dict, filename="logs.csv"):
+    """Appends structural daily metrics data to a running CSV file on GitHub"""
+    if not TOKEN or not REPO:
+        return
+    
+    url = f"https://api.github.com/repos/{REPO}/contents/{filename}"
+    headers = {"Authorization": f"token {TOKEN}", "Accept": "application/vnd.github.v3+json"}
+    
+    res = requests.get(url, headers=headers)
+    existing_content = ""
+    sha = None
+    
+    if res.status_code == 200:
+        sha = res.json().get("sha")
+        existing_content = base64.b64decode(res.json().get("content")).decode("utf-8")
+        df = pd.read_csv(BytesIO(existing_content.encode("utf-8")))
+    else:
+        df = pd.DataFrame(columns=["Timestamp", "Section", "Score", "Notes"])
+        
+    new_row = pd.DataFrame([row_dict])
+    df = pd.concat([df, new_row], ignore_index=True)
+    
+    csv_buffer = df.to_csv(index=False)
+    encoded_content = base64.b64encode(csv_buffer.encode("utf-8")).decode("utf-8")
+    
+    payload = {"message": "App Log: Updated Metrics Tracker", "content": encoded_content}
+    if sha:
+        payload["sha"] = sha
+        
+    requests.put(url, headers=headers, json=payload)
+
+def load_history_from_github(filename="logs.csv"):
+    """Reads all historical tracking information to render dashboards"""
+    if not TOKEN or not REPO:
+        return pd.DataFrame()
+    url = f"https://api.github.com/repos/{REPO}/contents/{filename}"
+    headers = {"Authorization": f"token {TOKEN}"}
+    res = requests.get(url, headers=headers)
+    if res.status_code == 200:
+        content = base64.b64decode(res.json().get("content")).decode("utf-8")
+        return pd.read_csv(BytesIO(content.encode("utf-8")))
+    return pd.DataFrame()
+
+# Fetch baseline data history
+history_df = load_history_from_github()
+
+# Master Application Interface
 st.title("🎯 Khemka Life OS")
-st.caption("Master Command Center | Animesh Khemka")
+st.caption("Permanent Storage Enabled Command Center")
+st.write("---")
 
-# Central Historical Data Hub (Sidebar File Attachment)
-st.sidebar.markdown("### 📂 Master History Vault")
-history_file = st.sidebar.file_uploader("Upload Life History Excel/PDF:", type=["xlsx", "csv", "pdf"], key="hist_vault")
-history_context = ""
-if history_file:
-    st.sidebar.success("Historic context loaded!")
-    history_context = "Use the following background historical records from Animesh's master files to contextualize your advice: "
-
-if st.sidebar.button("✨ Get Micro-Nudge & Quote"):
-    if model:
-        nudge_prompt = "Give Animesh Khemka a powerful, highly specific, 2-sentence morning motivational quote and 3 rapid health reminders (e.g., water, posture, screen-time limit) for today."
-        res = model.generate_content(nudge_prompt)
-        st.sidebar.info(res.text)
-
-# 7-Section Mobile Navigation Tabs
+# Navigation Hub
 tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
     "❤️ Health", "🧠 Learn", "💼 Biz", "🧘 Peace", "🤝 Rel", "📉 Finance", "🚀 Goals"
 ])
 
 # ==========================================
-# 1. HEALTH & FITNESS
+# 1. HEALTH & FITNESS MODULE (With File & Voice Persistence)
 # ==========================================
 with tab1:
-    st.header("💪 Health & Fitness Tracker")
-    h_score = st.slider("Rate your physical state today", 1, 10, 7, key="h_sl")
+    st.header("💪 Health & Fitness Vault")
     
-    st.subheader("Log Data")
-    h_input = st.text_area("Type updates or log junk food temptations:", placeholder="e.g., Had a light salad for lunch, felt low energy around 4 PM.", key="h_txt")
+    # Render historic alignment trend directly from saved records
+    if not history_df.empty:
+        health_history = history_df[history_df["Section"] == "Health"]
+        if not health_history.empty:
+            st.caption("📈 Historical Health Alignment Trend")
+            st.line_chart(health_history.set_index("Timestamp")["Score"])
+
+    h_score = st.slider("Rate physical alignment today", 1, 10, 7)
+    h_input = st.text_area("Log data, meals, workout insights, or daily metrics:", key="h_notes_field")
     
-    st.caption("🎤 Or record a quick voice log:")
-    audio_log = st.audio_input("Record Audio Log", key="health_audio")
+    st.caption("🎤 Record real-time voice updates:")
+    audio_log = st.audio_input("Tap to speak your health logs", key="h_audio_input")
     
-    h_file = st.file_uploader("Upload medical reports or fitness device screenshots:", type=["pdf", "png", "jpg"], key="h_fl")
+    uploaded_file = st.file_uploader("Upload permanent medical documents/images:", type=["pdf", "png", "jpg", "xlsx", "docx"])
     
-    if st.button("Get Expert Health Alignment Advice", use_container_width=True):
-        if model:
-            with st.spinner("Processing logs..."):
-                prompt = f"{history_context} Act as an elite health coach. Animesh rated his health {h_score}/10. Notes: {h_input}. Give specific, targeted suggestions by body part and strict adjustments to reach a 10/10."
+    if st.button("Permanently Save & Analyze Logs", use_container_width=True):
+        timestamp = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M")
+        saved_file_name = ""
+        
+        # Save heavy assets to GitHub repository storage drawer automatically
+        if uploaded_file:
+            bytes_data = uploaded_file.getvalue()
+            if save_file_to_github(bytes_data, f"health_{timestamp.replace(' ', '_')}_{uploaded_file.name}"):
+                st.success(f"📁 {uploaded_file.name} saved permanently to vault!")
+                saved_file_name = uploaded_file.name
                 
-                # Combine standard text prompt with audio file if recorded
+        if audio_log:
+            audio_bytes = audio_log.getvalue()
+            save_file_to_github(audio_bytes, f"voice_log_{timestamp.replace(' ', '_')}.wav", folder="vault/voice")
+            st.success("🎤 Voice note filed securely in history logs.")
+
+        # Save metrics rows permanently to CSV
+        log_row_to_csv({"Timestamp": timestamp, "Section": "Health", "Score": h_score, "Notes": f"{h_input} | Attached file: {saved_file_name}"})
+        
+        if model:
+            with st.spinner("AI analyzing timeline records..."):
+                prompt = f"Act as an elite personal health advisor. Animesh logged a status score of {h_score}/10 today. Context: {h_input}. Review details and provide immediate optimization updates."
                 payload = [prompt]
                 if audio_log:
                     payload.append(audio_log)
-                if h_file:
-                    payload.append(h_file)
-                    
+                if uploaded_file:
+                    payload.append(uploaded_file)
                 st.info(model.generate_content(payload).text)
 
 # ==========================================
-# 2. LEARNING & DEVELOPMENT
+# 2. LEARNING & DEVELOPMENT MODULE (Growing Summary Bank)
 # ==========================================
 with tab2:
-    st.header("📚 Knowledge Vault")
-    st.subheader("Summarize New Content")
-    media_name = st.text_input("Enter Book Title or Podcast Episode:", placeholder="e.g., Think and Grow Rich")
-    custom_notes = st.text_area("Paste your own summaries or notes if any:", key="l_notes")
+    st.header("📚 Knowledge & Library Vault")
     
-    if st.button("Generate Tailored Summary Bank", use_container_width=True):
-        if model:
-            with st.spinner("Distilling key insights..."):
-                prompt = f"Provide a comprehensive, high-utility summary of '{media_name}' specifically tailored for an ambitious entrepreneur. Highlight actionable rules he can implement instantly. Supplemental notes provided: {custom_notes}"
-                st.info(model.generate_content(prompt).text)
+    # Display running total of library entries if history exists
+    if not history_df.empty:
+        learn_history = history_df[history_df["Section"] == "Learning"]
+        if not learn_history.empty:
+            st.markdown(f"📊 **Total custom summaries compiled in library:** {len(learn_history)}")
+    
+    media_name = st.text_input("Enter Book Name or Podcast Ticker:")
+    uploaded_book = st.file_uploader("Upload core summary document or audio source (PDF/Word/Excel):", type=["pdf", "docx", "xlsx", "txt"])
+    
+    if st.button("Commit Summary to Permanent Library", use_container_width=True):
+        if media_name and model:
+            with st.spinner("Indexing content vector layers..."):
+                timestamp = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M")
                 
-    st.markdown("---")
-    st.subheader("🧠 The Master 20-30 Rules Blueprint")
-    if st.button("Compile Master Library Synthesizer", use_container_width=True):
-        if model:
-            with st.spinner("Synthesizing your global library..."):
-                prompt = "Analyze core wisdom from top performance books (Atomic Habits, Principles, Zero to One). Output a precise, actionable list of the 'Top 25 Absolute Rules to Live By' tailored for daily operation."
-                st.success(model.generate_content(prompt).text)
+                # Execute permanent file sync to cloud repository
+                if uploaded_book:
+                    save_file_to_github(uploaded_book.getvalue(), f"library_{media_name.replace(' ', '_')}_{uploaded_book.name}")
+                
+                prompt = f"Analyze structural inputs for '{media_name}'. Provide an deep-dive summary containing core entrepreneurial takeaways tailored specifically for Animesh's day-to-day deployment."
+                summary_output = model.generate_content([prompt, uploaded_book] if uploaded_book else [prompt]).text
+                
+                # Append text data permanently to history tracking logs
+                log_row_to_csv({"Timestamp": timestamp, "Section": "Learning", "Score": 10, "Notes": f"Book: {media_name} Summary archived."})
+                st.success("Archived to permanent cloud library!")
+                st.info(summary_output)
 
 # ==========================================
-# 3. WORK & BUSINESS
+# 3. WORK & BUSINESS MODULE
 # ==========================================
 with tab3:
-    st.header("🏢 Venture Strategy & Execution")
-    biz_name = st.text_input("Venture/Project Name:", placeholder="e.g., Export & Gifting Venture")
-    biz_score = st.slider("Rate current execution momentum", 1, 10, 6, key="b_sl")
-    biz_strategy = st.text_area("Current core challenges or strategies in mind:")
+    st.header("🏢 Venture Strategy Hub")
+    if not history_df.empty:
+        biz_hist = history_df[history_df["Section"] == "Business"]
+        if not biz_hist.empty:
+            st.caption("📉 Strategic Operations Momentum Track")
+            st.line_chart(biz_hist.set_index("Timestamp")["Score"])
+            
+    biz_name = st.text_input("Target Venture Name:")
+    biz_score = st.slider("Rate operational speed/momentum", 1, 10, 5)
+    biz_notes = st.text_area("Log current strategic moves or challenges:")
+    biz_doc = st.file_uploader("Upload operational data sheets (Excel/Word/PDF):", type=["xlsx", "csv", "pdf", "docx"], key="biz_uploader")
     
-    if st.button("Consult Corporate Strategy Engine", use_container_width=True):
+    if st.button("Save & Consult Strategy Engine", use_container_width=True):
+        timestamp = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M")
+        if biz_doc:
+            save_file_to_github(biz_doc.getvalue(), f"biz_{biz_name}_{biz_doc.name}")
+        
+        log_row_to_csv({"Timestamp": timestamp, "Section": "Business", "Score": biz_score, "Notes": f"Venture: {biz_name} | {biz_notes}"})
+        
         if model:
-            with st.spinner("Analyzing operational directives..."):
-                prompt = f"{history_context} Act as an elite McKinsey business strategist. Venture: {biz_name}. Momentum Score: {biz_score}/10. Current strategy/challenge: {biz_strategy}. Provide a comprehensive strategy."
-                st.info(model.generate_content(prompt).text)
+            with st.spinner("Analyzing operational trends..."):
+                prompt = f"Act as a premier business strategist. Venture: {biz_name}. Momentum: {biz_score}/10. Current alignment constraints: {biz_notes}. Review inputs and deliver direct tactical advice."
+                st.info(model.generate_content([prompt, biz_doc] if biz_doc else [prompt]).text)
 
 # ==========================================
-# 4. PEACE & SUCCESS
+# 4. PEACE & SUCCESS MODULE
 # ==========================================
 with tab4:
-    st.header("🧘 Mindset & Alignment")
-    st.subheader("✨ Mental Fortification & Energy Shielding")
-    if st.button("Get Daily Manifestation & Focus Ritual", use_container_width=True):
+    st.header("🧘 Mindset & Cosmic Alignment")
+    if st.button("Fetch Daily Manifestation & Protection Blueprint", use_container_width=True):
         if model:
-            prompt = "Provide a high-performance morning manifestation exercise, a 5-minute deep breathing technique, and explicit mental models on how to protect energy and ruthlessly block out negativity or toxic family dynamics."
-            st.info(model.generate_content(prompt).text)
+            st.info(model.generate_content("Provide an executive mindset conditioning prompt, deep breathing rhythm instructions, and specific behavioral strategies to maximize concentration and shield energy from disruptive environments.").text)
             
     st.markdown("---")
-    st.subheader("🌌 Cosmic Alignment & Remedies")
-    astro_file = st.file_uploader("Upload Astrological Birth Chart (PDF/Image):", type=["pdf", "png", "jpg"], key="astro_fl")
-    if st.button("Analyze Astrological Chart", use_container_width=True):
-        if model and astro_file:
-            with st.spinner("Decoding chart arrays..."):
-                prompt = "Analyze this astrological data/chart image. Provide core personal insights, upcoming energetic shifts, and highly practical daily remedies/routines to optimize performance."
+    st.subheader("🌌 Natal Astrology Reading Vault")
+    astro_file = st.file_uploader("Upload astrological birth chart (PDF/Image/Screenshot):", type=["pdf", "png", "jpg"])
+    if st.button("Analyze & Update Astro Remedies", use_container_width=True):
+        if astro_file and model:
+            with st.spinner("Decoding alignments..."):
+                save_file_to_github(astro_file.getvalue(), f"astro_chart_{pd.Timestamp.now().strftime('%Y%m%d')}.png")
+                prompt = "Examine this birth chart deployment sheet. Outline the absolute best personal performance windows and standard daily grounding routine fixes."
                 st.info(model.generate_content([prompt, astro_file]).text)
-        elif not astro_file:
-            st.warning("Please upload a file or screenshot of your chart first.")
 
 # ==========================================
-# 5. RELATIONSHIPS
+# 5. RELATIONSHIPS MODULE
 # ==========================================
 with tab5:
-    st.header("🤝 Relationship Alignment Tracker")
-    r_score = st.slider("Rate core personal relationship harmony", 1, 10, 7, key="r_sl")
-    r_notes = st.text_area("Log current dynamics, important dates, or friction points:", placeholder="e.g., Balancing time between high-stress work weeks and family obligations.")
-    
-    if st.button("Generate Relationship Growth Roadmap", use_container_width=True):
-        if model:
-            prompt = f"Act as a premier relationship psychologist. Animesh rates current alignment as {r_score}/10. Context: {r_notes}. Provide 3 clear, practical actions to deepen bonds, improve empathetic communication, and protect valuable connections."
-            st.info(model.generate_content(prompt).text)
+    st.header("🤝 Interpersonal Network CRM")
+    r_score = st.slider("Rate general relational health", 1, 10, 7)
+    r_notes = st.text_area("Track updates, friction elements, or milestones:")
+    if st.button("Log Matrix Records", use_container_width=True):
+        log_row_to_csv({"Timestamp": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M"), "Section": "Relationships", "Score": r_score, "Notes": r_notes})
+        st.success("Relational metrics log synced permanently.")
 
 # ==========================================
-# 6. INDIAN FINANCE ENGINE (Real-Time + AI)
+# 6. INDIAN STOCK MARKET ENGINE
 # ==========================================
 with tab6:
-    st.header("📉 Indian Financial Markets")
-    
-    # Morning Snapshot Generator
-    if st.button("☀️ Pull Indian Market Pre-Open Snapshot", use_container_width=True):
+    st.header("📉 Market Trading Terminal")
+    if st.button("☀️ Compile Alpha Market Briefing", use_container_width=True):
         if model:
-            with st.spinner("Fetching live market vectors..."):
+            with st.spinner("Scraping index layers..."):
                 try:
                     nifty = yf.Ticker("^NSEI").history(period="2d")
-                    sensex = yf.Ticker("^BSESN").history(period="2d")
                     nifty_close = nifty['Close'].iloc[-1] if not nifty.empty else "N/A"
-                    sensex_close = sensex['Close'].iloc[-1] if not sensex.empty else "N/A"
-                    
-                    market_prompt = f"Generate an assertive, highly actionable morning market layout for an active Indian stock investor. Mention key trend focus points. Quick context numbers: Nifty 50 at {nifty_close}, Sensex at {sensex_close}. Provide 3 high-probability alpha investment sectors/ideas for today."
-                    st.info(model.generate_content(market_prompt).text)
+                    prompt = f"Generate an assertive pre-market framework brief for an Indian equity operator. Baseline indicator check: Nifty 50 at {nifty_close}. Pinpoint 3 high-probability actionable sectors."
+                    st.info(model.generate_content(prompt).text)
                 except Exception as e:
-                    st.error(f"Market fetch issue: {e}")
-
+                    st.error(f"Scraper error: {e}")
+                    
     st.markdown("---")
-    st.subheader("🔍 Deep-Dive Stock Analysis Engine")
-    ticker_input = st.text_input("Enter Indian Ticker Symbol (e.g., RELIANCE.NS, TCS.NS, INFY.NS):", value="RELIANCE.NS")
-    
-    if st.button("Run Comprehensive Fundamental + Technical Audit", use_container_width=True):
-        with st.spinner(f"Scraping live execution metrics for {ticker_input}..."):
-            try:
-                stock = yf.Ticker(ticker_input)
-                hist = stock.history(period="6mo")
-                
-                if not hist.empty:
-                    current_price = hist['Close'].iloc[-1]
-                    ma_50 = hist['Close'].rolling(50).mean().iloc[-1]
-                    ma_200 = hist['Close'].rolling(200).mean().iloc[-1]
-                    
-                    metrics_summary = f"""
-                    Ticker: {ticker_input}
-                    Current Price: ₹{current_price:.2f}
-                    50-Day Moving Average: ₹{ma_50:.2f}
-                    200-Day Moving Average: ₹{ma_200:.2f}
-                    Recent Volume: {hist['Volume'].iloc[-1]}
-                    """
-                    
-                    st.text_area("Live Extracted Metrics Data:", metrics_summary, height=120)
-                    
-                    if model:
-                        ai_finance_prompt = f"""
-                        You are a brilliant hedge fund analyst specializing in the National Stock Exchange of India (NSE). 
-                        Analyze this raw price and structural tracking data for {ticker_input}:
-                        {metrics_summary}
-                        
-                        Run a comprehensive fundamental and technical cross-examination. Output a detailed report:
-                        1. Technical health assessment (Price vs 50MA/200MA trends).
-                        2. Key support and resistance estimation.
-                        3. Definitive Buy/Hold/Sell recommendation with explicit reasoning.
-                        """
-                        st.markdown("### 🤖 Deep-Dive Recommendation Report")
-                        st.write(model.generate_content(ai_finance_prompt).text)
-                else:
-                    st.error("Could not locate ticker data. Please make sure to append '.NS' for National Stock Exchange listings.")
-            except Exception as ex:
-                st.error(f"Error executing market analysis: {ex}")
-
-    st.markdown("---")
-    st.subheader("📋 Master Portfolio Review")
-    portfolio_file = st.file_uploader("Upload Portfolio Sheet (Excel/CSV):", type=["xlsx", "csv"], key="port_fl")
-    if st.button("Execute Portfolio Audit", use_container_width=True):
-        if model and portfolio_file:
-            with st.spinner("Auditing risk exposures..."):
-                prompt = "Review this stock portfolio data sheet. Identify heavy concentration risks, underperforming allocations, and provide structural balancing moves tailored for Indian market conditions."
-                st.info(model.generate_content([prompt, portfolio_file]).text)
+    st.subheader("🔍 Equities Audit Deep-Dive")
+    ticker = st.text_input("Enter Ticker Code (e.g., RELIANCE.NS, INFYS.NS):", value="RELIANCE.NS")
+    if st.button("Execute Strategic Asset Audit", use_container_width=True):
+        try:
+            stock = yf.Ticker(ticker)
+            hist = stock.history(period="6mo")
+            if not hist.empty:
+                metrics = f"Price: ₹{hist['Close'].iloc[-1]:.2f} | 50MA: ₹{hist['Close'].rolling(50).mean().iloc[-1]:.2f} | 200MA: ₹{hist['Close'].rolling(200).mean().iloc[-1]:.2f}"
+                st.text(metrics)
+                if model:
+                    st.write(model.generate_content(f"Act as a professional technical equity researcher. Evaluate these conditions for {ticker}: {metrics}. Provide clear entry/exit points and clear Buy/Hold/Sell actions.").text)
+        except Exception as err:
+            st.error(f"Analysis error: {err}")
 
 # ==========================================
-# 7. LONG-TERM GOALS & STRATEGY
+# 7. LONG-TERM GOALS
 # ==========================================
 with tab7:
-    st.header("🚀 Macro Strategy & Vision")
-    g_vision = st.text_area("Your 5-Year and 10-Year Grand Vision:", placeholder="Describe the scale of impact, businesses, and life lifestyle you are actively building towards.")
-    g_score = st.slider("Rate macro execution alignment toward goals", 1, 10, 5, key="g_sl")
-    
-    if st.button("Synthesize Long-Term Strategy Vectors", use_container_width=True):
-        if model:
-            with st.spinner("Mapping long-range strategies..."):
-                prompt = f"Review Animesh's long-term macro vision: '{g_vision}'. His self-rated momentum is {g_score}/10. Break down a quarterly execution framework, call out critical blind spots he must manage, and offer alternative strategic levers to accelerate his trajectory."
-                st.info(model.generate_content(prompt).text)
+    st.header("🚀 Strategic Goal Vectoring")
+    vision_input = st.text_area("Current 5/10 Year Trajectory Blueprints:")
+    if st.button("Update Core Milestones", use_container_width=True):
+        log_row_to_csv({"Timestamp": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M"), "Section": "Goals", "Score": 10, "Notes": vision_input})
+        st.success("Macro directives stored permanently in repository archives.")
