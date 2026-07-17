@@ -10,7 +10,9 @@ import xml.etree.ElementTree as ET
 from io import BytesIO
 from datetime import datetime
 
-# 1. Responsive Shell Configuration
+# ==========================================
+# 1. RESPONSIVE SHELL CONFIGURATION
+# ==========================================
 st.set_page_config(page_title="Khemka Life OS", page_icon="🎯", layout="centered", initial_sidebar_state="collapsed")
 
 # Elite Native Mobile App Theme UI Engine
@@ -22,6 +24,14 @@ st.markdown("""
         .sync-btn>div>button {background-color: #059669 !important; color: white !important; border: none;}
         .stTabs [data-baseweb="tab-list"] {gap: 4px; justify-content: space-around;}
         .stTabs [data-baseweb="tab"] {padding: 6px 10px; background-color: #F3F4F6; border-radius: 6px; font-size: 11px;}
+        .file-card {
+            background-color: #F8FAFC; 
+            border: 1px solid #E2E8F0; 
+            border-radius: 12px; 
+            padding: 1.5rem; 
+            margin-bottom: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
     </style>
 """, unsafe_allow_html=True)
 
@@ -31,12 +41,13 @@ REPO = st.secrets.get("GITHUB_REPO", "")
 API_KEY = st.secrets.get("GEMINI_API_KEY", "")
 
 # ==========================================
-# ⚡ SELF-HEALING AI CALL CORE ENGINE
+# ⚡ SELF-HEALING VERSION-LOCKED AI ENGINE
 # ==========================================
 def call_gemini_engine(prompt_text):
     if not API_KEY:
         return "⚠️ Gemini API Key missing in Settings -> Secrets."
     
+    # Dynamically falls back through core model endpoints to prevent library version 404 mismatch errors
     models_to_try = ['gemini-1.5-flash', 'gemini-pro', 'models/gemini-1.5-flash', 'models/gemini-pro']
     last_err = ""
     
@@ -50,7 +61,7 @@ def call_gemini_engine(prompt_text):
             last_err = str(e)
             continue
             
-    return f"❌ System sync resolved successfully, but text summary extraction timed out. Error parameter: {last_err}"
+    return f"❌ System sync completed safely, but text summary extraction hit a platform limit. Raw content is preserved below. Info: {last_err}"
 
 # ==========================================
 # ⚡ NATIVE LOCAL FILE TEXT EXTRACTOR
@@ -79,7 +90,7 @@ def extract_raw_text(uploaded_file):
         elif name.endswith(".xlsx") or name.endswith(".xls"):
             return pd.read_excel(BytesIO(file_bytes)).to_string()
         else:
-            return f"[Raw file text data processed for: {uploaded_file.name}]"
+            return f"[Full raw data text block processed for asset: {uploaded_file.name}]"
     except Exception as e:
         return f"[Text extraction note: {str(e)}]"
 
@@ -213,20 +224,22 @@ with tab1:
         if not h_data.empty: 
             st.line_chart(h_data.set_index("Timestamp")["Score"])
             st.write("### 📜 Health Analysis Feed:")
-            # FIXED: Added enumerated idx loop parsing to force absolute key uniqueness on screen elements
             for idx, (_, row) in enumerate(h_data.iloc[::-1].iterrows()):
                 ai_sum = str(row.get('AI_Summary', ''))
                 raw_text = str(row.get("Raw_Content", ""))
+                title_slug = str(row.get('Notes', 'Health Item')).split('|')[0]
                 
                 if "ceiling met" in ai_sum or "v1beta" in ai_sum or ai_sum.strip() == "":
-                    ai_sum = "*File logged into deep historical sync layers. New uploads below will stream live actionable summary readouts here.*"
+                    ai_sum = "*File logged safely into system files configuration layers.*"
                 
-                with st.expander(f"📝 View Summary ({row['Timestamp']})"):
-                    st.markdown(ai_sum)
-                    if raw_text.strip() != "" and "v1beta" not in raw_text and "ceiling met" not in raw_text:
-                        with st.expander("📂 Click to view original raw file text"):
-                            st.text_area("Original Content Stream", value=raw_text, height=200, disabled=True, key=f"raw_h_{row['Timestamp']}_{idx}")
-                st.write("---")
+                st.markdown(f'<div class="file-card">', unsafe_allow_html=True)
+                st.markdown(f"### {title_slug}")
+                st.caption(f"Logged at: {row['Timestamp']}")
+                st.markdown(ai_sum)
+                if raw_text.strip() != "" and "v1beta" not in raw_text and "ceiling met" not in raw_text:
+                    with st.expander("📂 Click to view original raw file text"):
+                        st.text_area("Original Content Stream", value=raw_text, height=200, disabled=True, key=f"raw_h_{row['Timestamp']}_{idx}")
+                st.markdown('</div>', unsafe_allow_html=True)
 
     h_score = st.slider("Rate physical health score today", 1, 10, 7, key="h_slider")
     h_input = st.text_area("Type lifestyle or workout notes:", key="h_notes")
@@ -234,27 +247,34 @@ with tab1:
     
     if st.button("Permanently Save Health Data", use_container_width=True):
         timestamp = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M")
-        names_list = []
-        raw_extracted_data = ""
         
         if uploaded_files:
             for f in uploaded_files:
                 f_bytes = f.getvalue()
                 save_file_to_github(f_bytes, f"health_{timestamp.replace(' ','_')}_{f.name}")
-                names_list.append(f.name)
-                raw_extracted_data += f"\n--- File Content: {f.name} ---\n" + extract_raw_text(f) + "\n"
-        
-        prompt_input = f"Provide a concise fitness summary and health check metrics for this session:\n\nNotes: {h_input}\n\nDocument Data:\n{raw_extracted_data[:15000]}"
-        ai_summary = call_gemini_engine(prompt_input)
+                single_file_text = extract_raw_text(f)
                 
-        commit_new_log({
-            "Timestamp": timestamp, 
-            "Section": "Health", 
-            "Score": h_score, 
-            "Notes": f"{h_input} | Uploaded Assets: {', '.join(names_list)}",
-            "AI_Summary": ai_summary,
-            "Raw_Content": raw_extracted_data if raw_extracted_data else h_input
-        })
+                prompt_input = f"Provide a comprehensive, highly detailed 12-to-15 line executive summary and lifestyle advice based on this specific health document:\n\nFile Name: {f.name}\n\nUser Notes: {h_input}\n\nDocument Contents:\n{single_file_text[:15000]}"
+                ai_summary = call_gemini_engine(prompt_input)
+                
+                commit_new_log({
+                    "Timestamp": timestamp, 
+                    "Section": "Health", 
+                    "Score": h_score, 
+                    "Notes": f"📄 {f.name} | Context: {h_input}",
+                    "AI_Summary": ai_summary,
+                    "Raw_Content": single_file_text if single_file_text else h_input
+                })
+        else:
+            commit_new_log({
+                "Timestamp": timestamp, 
+                "Section": "Health", 
+                "Score": h_score, 
+                "Notes": h_input,
+                "AI_Summary": "Manual metrics profile entry saved successfully.",
+                "Raw_Content": h_input
+            })
+            
         st.success("Synced to cloud storage!")
         time.sleep(0.5)
         st.rerun()
@@ -269,6 +289,7 @@ with tab2:
         l_data = history_df[history_df["Section"] == "Learning"]
         st.metric(label="Total Library Assets Stacked", value=len(l_data))
         
+        # 🎯 MASTER ACTION RULES ENGINE
         st.markdown("### ⚡ Master Life Implementation Sheet")
         if st.button("✨ GENERATE 10-20 ACTIONABLE LIFE RULES FROM ALL FILES", use_container_width=True, key="gen_l_rules"):
             valid_contents = [str(r['Raw_Content']) for _, r in l_data.iterrows() if "v1beta" not in str(r['Raw_Content']) and "ceiling met" not in str(r['Raw_Content']) and str(r['Raw_Content']).strip() != ""]
@@ -276,10 +297,10 @@ with tab2:
             if valid_contents:
                 combined_text = "\n\n".join(valid_contents)
                 with st.spinner("Analyzing text content vectors..."):
-                    prompt = f"You are an elite high-performance productivity analyst. Review the complete text contents extracted from all these books and documents. Extract exactly 10 to 20 concrete, definitive, and highly actionable execution rules or strategic life principles that Animesh must permanently implement in his operational routine. Output them immediately as a clean, high-impact bulleted list:\n\n{combined_text[:35000]}"
+                    prompt = f"You are an elite productivity strategist. Review the text contents extracted from all these books and documents. Extract exactly 10 to 20 concrete, definitive, and highly actionable execution rules or life principles that Animesh must permanently implement in his operational routine. Output them immediately as an organized high-impact list:\n\n{combined_text[:35000]}"
                     st.session_state["l_master_rules"] = call_gemini_engine(prompt)
             else:
-                st.warning("No clean book text layers found in your historical data logs yet. Drop a new text or docx file down below first!")
+                st.warning("No clean book text layers found in your data logs yet. Drop a fresh file down below to begin!")
                 
         if "l_master_rules" in st.session_state:
             st.info(st.session_state["l_master_rules"])
@@ -287,52 +308,51 @@ with tab2:
             
         if not l_data.empty:
             st.write("### 📜 Library Summaries & Document Reader:")
-            # FIXED: Wrapped loop extraction parameters inside enumerated layout signatures to neutralize key duplication
             for idx, (_, row) in enumerate(l_data.iloc[::-1].iterrows()):
                 ai_sum = str(row.get('AI_Summary', ''))
                 raw_text = str(row.get("Raw_Content", ""))
+                title_slug = str(row.get('Notes', 'Book File')).split('|')[0]
                 
                 if "ceiling met" in ai_sum or "v1beta" in ai_sum or ai_sum.strip() == "":
-                    ai_sum = "*Historical document entry preserved in storage matrix. Drop your fresh files below to view automated text layouts here.*"
+                    ai_sum = "*Historical document log verified. Fresh file uploads below will parse clean summaries here.*"
                 
-                title_slug = str(row['Notes']).split('|')[0]
-                
-                with st.expander(f"📝 View Summary ({row['Timestamp']}) | {title_slug[:40]}..."):
-                    st.markdown(ai_sum)
-                    if raw_text.strip() != "" and "v1beta" not in raw_text and "ceiling met" not in raw_text:
-                        with st.expander("📂 Click to view original raw file text"):
-                            st.text_area("Original Extracted Content", value=raw_text, height=250, disabled=True, key=f"raw_l_{row['Timestamp']}_{idx}")
-                st.write("---")
+                st.markdown(f'<div class="file-card">', unsafe_allow_html=True)
+                st.markdown(f"### {title_slug}")
+                st.caption(f"Archived on: {row['Timestamp']}")
+                st.markdown(ai_sum)
+                if raw_text.strip() != "" and "v1beta" not in raw_text and "ceiling met" not in raw_text:
+                    with st.expander("📂 Click to view original raw file text"):
+                        st.text_area("Original Extracted Content", value=raw_text, height=250, disabled=True, key=f"raw_l_{row['Timestamp']}_{idx}")
+                st.markdown('</div>', unsafe_allow_html=True)
         
-    media_name = st.text_input("Source Title:")
+    media_name = st.text_input("Source Batch Reference Title:")
     uploaded_books = st.file_uploader("Drop books or summaries in bulk:", type=["pdf", "docx", "xlsx", "txt"], accept_multiple_files=True, key="l_bulk")
     
     if st.button("Inject Batch to Library Vault", use_container_width=True):
         if uploaded_books:
             timestamp = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M")
-            names_list = [b.name for b in uploaded_books]
-            raw_extracted_data = ""
             
-            with st.spinner("Extracting complete raw text from your files locally..."):
-                for b in uploaded_books:
+            # Loops over each uploaded document individually to create isolated database records
+            for b in uploaded_books:
+                with st.spinner(f"Processing separate entry for: {b.name}..."):
                     save_file_to_github(b.getvalue(), f"library_{media_name.replace(' ','_')}_{b.name}")
-                    raw_extracted_data += f"\n--- Start Document Text: {b.name} ---\n" + extract_raw_text(b) + "\n"
-            
-            with st.spinner("Generating deep inside-the-file summary..."):
-                prompt = f"Analyze the complete text contents extracted from the uploaded document(s) ({', '.join(names_list)}). Provide a highly detailed, comprehensive executive summary of the content. List all major chapters, core parameters, and actionable workflows explicitly:\n\n{raw_extracted_data[:28000]}"
-                ai_summary = call_gemini_engine(prompt)
+                    single_book_text = extract_raw_text(b)
                     
-                commit_new_log({
-                    "Timestamp": timestamp, 
-                    "Section": "Learning", 
-                    "Score": 10, 
-                    "Notes": f"Batch: {media_name} | Files: {', '.join(names_list)}",
-                    "AI_Summary": ai_summary,
-                    "Raw_Content": raw_extracted_data
-                })
-                st.success("🎉 Library components successfully archived & synced!")
-                time.sleep(0.5)
-                st.rerun()
+                    prompt = f"Analyze the text content extracted from this specific document ({b.name}). Provide a highly detailed, comprehensive 12-to-15 line executive summary of the content. Explicitly detail all core chapters, strategic frameworks, and workflows found inside the text:\n\n{single_book_text[:28000]}"
+                    ai_summary = call_gemini_engine(prompt)
+                    
+                    commit_new_log({
+                        "Timestamp": timestamp, 
+                        "Section": "Learning", 
+                        "Score": 10, 
+                        "Notes": f"📄 {b.name} | Batch: {media_name}",
+                        "AI_Summary": ai_summary,
+                        "Raw_Content": single_book_text
+                    })
+                    
+            st.success("🎉 All documents successfully isolated, analyzed, and synced!")
+            time.sleep(0.5)
+            st.rerun()
 
 # ==========================================
 # 3. WORK & BUSINESS MODULE
@@ -349,7 +369,7 @@ with tab3:
             if valid_contents:
                 combined_text = "\n\n".join(valid_contents)
                 with st.spinner("Compiling production directives..."):
-                    prompt = f"Analyze my business operation metrics and data text layers completely. Extract exactly 10 to 20 precise strategic rules for global luxury export compliance, scalable regional warehouse logistics distribution setups, and design differentiators. Output as a clear bulleted list:\n\n{combined_text[:30000]}"
+                    prompt = f"Analyze my business operation metrics and data text layers completely. Extract exactly 10 to 20 precise strategic rules for global luxury export compliance, scalable distribution setups, and design utility features. Output as a bulleted list:\n\n{combined_text[:30000]}"
                     st.session_state["b_master_rules"] = call_gemini_engine(prompt)
             else:
                 st.warning("No active corporate strategy text content files found in database archives yet.")
@@ -360,20 +380,22 @@ with tab3:
             
         if not b_data.empty: 
             st.write("### 📜 Corporate Summaries & Specifications:")
-            # FIXED: Embedded absolute element uniqueness keys inside row enumerators
             for idx, (_, row) in enumerate(b_data.iloc[::-1].iterrows()):
                 ai_sum = str(row.get('AI_Summary', ''))
                 raw_text = str(row.get("Raw_Content", ""))
+                title_slug = str(row.get('Notes', 'Venture File')).split('|')[0]
                 
                 if "ceiling met" in ai_sum or "v1beta" in ai_sum or ai_sum.strip() == "":
-                    ai_sum = "*Corporate specification sheet logged safely to repository files. Inject new logs below to trigger active display grids.*"
+                    ai_sum = "*Specification parameter logged securely to data servers infrastructure layer.*"
                 
-                with st.expander(f"📝 View Summary ({row['Timestamp']})"):
-                    st.markdown(ai_sum)
-                    if raw_text.strip() != "" and "v1beta" not in raw_text and "ceiling met" not in raw_text:
-                        with st.expander("📂 Click to view original raw file text"):
-                            st.text_area("Original File Contents", value=raw_text, height=200, disabled=True, key=f"raw_b_{row['Timestamp']}_{idx}")
-                st.write("---")
+                st.markdown(f'<div class="file-card">', unsafe_allow_html=True)
+                st.markdown(f"### {title_slug}")
+                st.caption(f"Entry Timestamp: {row['Timestamp']}")
+                st.markdown(ai_sum)
+                if raw_text.strip() != "" and "v1beta" not in raw_text and "ceiling met" not in raw_text:
+                    with st.expander("📂 Click to view original raw file text"):
+                        st.text_area("Original File Contents", value=raw_text, height=200, disabled=True, key=f"raw_b_{row['Timestamp']}_{idx}")
+                st.markdown('</div>', unsafe_allow_html=True)
             
     biz_name = st.text_input("Venture Name:", value="Premium Vegan Leather Goods Brand")
     biz_score = st.slider("Current Execution Momentum", 1, 10, 7, key="b_slider")
@@ -382,25 +404,34 @@ with tab3:
     
     if st.button("Analyze & Save Venture Metrics", use_container_width=True):
         timestamp = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M")
-        names_list = [bd.name for bd in biz_docs] if biz_docs else []
-        raw_extracted_data = ""
         
         if biz_docs:
             for bd in biz_docs:
-                save_file_to_github(bd.getvalue(), f"biz_{biz_name}_{bd.name}")
-                raw_extracted_data += f"\n--- Specification Data: {bd.name} ---\n" + extract_raw_text(bd) + "\n"
-                
-        prompt = f"Act as a premier international corporate design strategist. Provide a comprehensive tactical evaluation and high-level structural summary of these operational updates and internal files:\n\nNotes: {biz_notes}\n\nDocument Data:\n{raw_extracted_data[:22000]}"
-        ai_summary = call_gemini_engine(prompt)
-                
-        commit_new_log({
-            "Timestamp": timestamp, 
-            "Section": "Business", 
-            "Score": biz_score, 
-            "Notes": f"{biz_notes} | Files: {', '.join(names_list)}",
-            "AI_Summary": ai_summary,
-            "Raw_Content": raw_extracted_data if raw_extracted_data else biz_notes
-        })
+                with st.spinner(f"Analyzing specifications text data layer for: {bd.name}..."):
+                    save_file_to_github(bd.getvalue(), f"biz_{biz_name}_{bd.name}")
+                    single_doc_text = extract_raw_text(bd)
+                    
+                    prompt = f"Act as a premier luxury brand design strategist. Provide a highly focused, comprehensive 12-to-15 line tactical summary and advice sequence for this file ({bd.name}) matching our strategy rules:\n\nOperational Notes: {biz_notes}\n\nDocument Text Data:\n{single_doc_text[:20000]}"
+                    ai_summary = call_gemini_engine(prompt)
+                    
+                    commit_new_log({
+                        "Timestamp": timestamp, 
+                        "Section": "Business", 
+                        "Score": biz_score, 
+                        "Notes": f"📄 {bd.name} | Project: {biz_name}",
+                        "AI_Summary": ai_summary,
+                        "Raw_Content": single_doc_text
+                    })
+        else:
+            commit_new_log({
+                "Timestamp": timestamp, 
+                "Section": "Business", 
+                "Score": biz_score, 
+                "Notes": f"Log Update for {biz_name}",
+                "AI_Summary": f"Venture execution parameters cataloged. Strategic update summary notes: {biz_notes}",
+                "Raw_Content": biz_notes
+            })
+            
         st.success("🎉 Venture metrics archived & broadcasted!")
         time.sleep(0.5)
         st.rerun()
@@ -415,17 +446,20 @@ with tab4:
         m_data = history_df[history_df["Section"] == "Mindset"]
         if not m_data.empty:
             st.write("### 🌌 Active Mindset Summaries & Astro Maps:")
-            # FIXED: Guarded widgets with incremental loop signatures to block Streamlit runtime keys crashes
             for idx, (_, row) in enumerate(m_data.iloc[::-1].iterrows()):
-                with st.expander(f"📝 View Summary ({row['Timestamp']})"):
-                    if "AI_Summary" in row and pd.notna(row["AI_Summary"]) and row["AI_Summary"] != "":
-                        st.markdown(row["AI_Summary"])
-                    
-                    raw_text = str(row.get("Raw_Content", ""))
-                    if raw_text.strip() != "" and "v1beta" not in raw_text and "ceiling met" not in raw_text:
-                        with st.expander("📂 Click to view original raw file text"):
-                            st.text_area("Original Content Stream", value=raw_text, height=200, disabled=True, key=f"raw_m_{row['Timestamp']}_{idx}")
-                st.write("---")
+                title_slug = str(row.get('Notes', 'Mindset Item')).split('|')[0]
+                
+                st.markdown(f'<div class="file-card">', unsafe_allow_html=True)
+                st.markdown(f"### {title_slug}")
+                st.caption(f"Alignment Window: {row['Timestamp']}")
+                if "AI_Summary" in row and pd.notna(row["AI_Summary"]) and row["AI_Summary"] != "":
+                    st.markdown(row["AI_Summary"])
+                
+                raw_text = str(row.get("Raw_Content", ""))
+                if raw_text.strip() != "" and "v1beta" not in raw_text and "ceiling met" not in raw_text:
+                    with st.expander("📂 Click to view original raw file text"):
+                        st.text_area("Original Content Stream", value=raw_text, height=200, disabled=True, key=f"raw_m_{row['Timestamp']}_{idx}")
+                st.markdown('</div>', unsafe_allow_html=True)
 
     if st.button("Fetch Daily Meditation & Energy Shield Protocol", use_container_width=True):
         timestamp = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M")
@@ -446,24 +480,22 @@ with tab4:
     if st.button("Execute Astro Mapping Alignment", use_container_width=True):
         if astro_files:
             timestamp = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M")
-            names_list = [af.name for af in astro_files]
-            raw_extracted_data = ""
             
             for af in astro_files:
                 save_file_to_github(af.getvalue(), f"astro_{af.name}")
-                raw_extracted_data += f"\n--- Astro File: {af.name} ---\n" + extract_raw_text(af) + "\n"
-            
-            prompt = f"Perform structured parsing and personal chart rule synthesis from this raw data profile text:\n\n{raw_extracted_data[:20000]}"
-            ai_summary = call_gemini_engine(prompt)
-            
-            commit_new_log({
-                "Timestamp": timestamp,
-                "Section": "Mindset",
-                "Score": 10,
-                "Notes": f"Astro Matrix Alignment | Files: {', '.join(names_list)}",
-                "AI_Summary": ai_summary,
-                "Raw_Content": raw_extracted_data
-            })
+                single_chart_text = extract_raw_text(af)
+                
+                prompt = f"Perform structured parsing and diagnostic 12-to-15 line rule synthesis from this raw data chart text layer ({af.name}):\n\n{single_chart_text[:20000]}"
+                ai_summary = call_gemini_engine(prompt)
+                
+                commit_new_log({
+                    "Timestamp": timestamp,
+                    "Section": "Mindset",
+                    "Score": 10,
+                    "Notes": f"📄 {af.name} | Astro Coordinates Mapping",
+                    "AI_Summary": ai_summary,
+                    "Raw_Content": single_chart_text
+                })
             st.rerun()
 
 # ==========================================
@@ -500,17 +532,20 @@ with tab6:
         f_data = history_df[history_df["Section"] == "Finance"]
         if not f_data.empty:
             st.write("### 📜 Market Summaries & Risk Metrics:")
-            # FIXED: Mapped loop index values cleanly to layout frames to restrict duplicate parsing errors
             for idx, (_, row) in enumerate(f_data.iloc[::-1].iterrows()):
-                with st.expander(f"📝 View Summary ({row['Timestamp']})"):
-                    if "AI_Summary" in row and pd.notna(row["AI_Summary"]) and row["AI_Summary"] != "":
-                        st.markdown(row["AI_Summary"])
-                    
-                    raw_text = str(row.get("Raw_Content", ""))
-                    if raw_text.strip() != "" and "v1beta" not in raw_text and "ceiling met" not in raw_text:
-                        with st.expander("📂 Click to view original raw spreadsheet text"):
-                            st.text_area("Spreadsheet Extracted Array", value=raw_text, height=200, disabled=True, key=f"raw_f_{row['Timestamp']}_{idx}")
-                st.write("---")
+                title_slug = str(row.get('Notes', 'Finance Update')).split('|')[0]
+                
+                st.markdown(f'<div class="file-card">', unsafe_allow_html=True)
+                st.markdown(f"### {title_slug}")
+                st.caption(f"Session Stamp: {row['Timestamp']}")
+                if "AI_Summary" in row and pd.notna(row["AI_Summary"]) and row["AI_Summary"] != "":
+                    st.markdown(row["AI_Summary"])
+                
+                raw_text = str(row.get("Raw_Content", ""))
+                if raw_text.strip() != "" and "v1beta" not in raw_text and "ceiling met" not in raw_text:
+                    with st.expander("📂 Click to view original raw spreadsheet text"):
+                        st.text_area("Spreadsheet Extracted Array", value=raw_text, height=200, disabled=True, key=f"raw_f_{row['Timestamp']}_{idx}")
+                st.markdown('</div>', unsafe_allow_html=True)
 
     if st.button("☀️ Pull Indian Pre-Market Framework Analysis", use_container_width=True):
         timestamp = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M")
@@ -521,7 +556,7 @@ with tab6:
         except Exception:
             pass
         
-        ai_summary = call_gemini_engine(f"Provide an assertive technical market layout brief for an Indian equities operator. Index validation state: Nifty 50 close tracking near {nifty_close}. Highlight 3 alpha trading sectors for outperformance.")
+        ai_summary = call_gemini_engine(f"Provide an assertive technical 12-to-15 line market layout brief for an Indian equities operator. Index validation state: Nifty 50 close tracking near {nifty_close}. Highlight 3 alpha trading sectors for outperformance.")
                 
         commit_new_log({
             "Timestamp": timestamp,
@@ -559,19 +594,19 @@ with tab6:
     port_files = st.file_uploader("Drop broker spreadsheets/statements (Select Multiple):", type=["xlsx", "csv"], accept_multiple_files=True, key="p_bulk")
     if st.button("Execute Portfolio Audit Risk Check", use_container_width=True):
         if port_files:
-            raw_extracted_data = ""
-            for pf in port_files: 
+            timestamp = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M")
+            for pf in port_files:
                 save_file_to_github(pf.getvalue(), f"portfolio_{pf.name}")
-                raw_extracted_data += f"\n--- Spreadsheet Profile: {pf.name} ---\n" + extract_raw_text(pf) + "\n"
-            
-            commit_new_log({
-                "Timestamp": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M"),
-                "Section": "Finance",
-                "Score": 10,
-                "Notes": f"Portfolio Statement Upload ({len(port_files)} files)",
-                "AI_Summary": f"### Verified Cloud Sync Complete\nSuccessfully loaded brokerage logs for screen review.",
-                "Raw_Content": raw_extracted_data
-            })
+                single_sheet_text = extract_raw_text(pf)
+                
+                commit_new_log({
+                    "Timestamp": timestamp,
+                    "Section": "Finance",
+                    "Score": 10,
+                    "Notes": f"📄 {pf.name} | Statement Update",
+                    "AI_Summary": f"### Brokerage Log Sync Verified\nRaw statement text matrix for {pf.name} successfully registered to screen review frame layers.",
+                    "Raw_Content": single_sheet_text
+                })
             st.success("🎉 Portfolio structural breakdown synced to server files successfully!")
             time.sleep(0.5)
             st.rerun()
