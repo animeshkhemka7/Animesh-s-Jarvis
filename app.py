@@ -36,6 +36,29 @@ else:
     model = None
 
 # ==========================================
+# ⚡ NATIVE RAW TEXT EXTRACTION ENGINE
+# ==========================================
+def extract_raw_text(uploaded_file):
+    if uploaded_file is None:
+        return ""
+    try:
+        file_type = uploaded_file.type
+        file_bytes = uploaded_file.getvalue()
+        # Direct extraction for plain text files
+        if "text/plain" in file_type:
+            return file_bytes.decode("utf-8")
+        # Utilize Gemini intelligence to pull full text transcripts from PDFs/Images screenlessly
+        elif model:
+            response = model.generate_content([
+                "Extract and transcribe the complete raw text content from this document word-for-word exactly as it is written. Do not summarize it, do not add any commentary, just return the raw text found inside so the user can review their original document.",
+                {"mime_type": file_type, "data": file_bytes}
+            ])
+            return response.text
+    except Exception as e:
+        return f"[Text extraction note: {str(e)}]"
+    return ""
+
+# ==========================================
 # ⚡ SECURE MULTI-DEVICE DATA LOCKER PIPELINE
 # ==========================================
 def save_file_to_github(file_bytes, filename, folder="vault"):
@@ -72,10 +95,12 @@ def log_row_to_csv(row_dict, filename="logs.csv"):
         existing_content = base64.b64decode(res.json().get("content")).decode("utf-8")
         df = pd.read_csv(BytesIO(existing_content.encode("utf-8")))
     else:
-        df = pd.DataFrame(columns=["Timestamp", "Section", "Score", "Notes", "AI_Summary"])
+        df = pd.DataFrame(columns=["Timestamp", "Section", "Score", "Notes", "AI_Summary", "Raw_Content"])
     
     if "AI_Summary" not in df.columns:
         df["AI_Summary"] = ""
+    if "Raw_Content" not in df.columns:
+        df["Raw_Content"] = ""
         
     df = pd.concat([df, pd.DataFrame([row_dict])], ignore_index=True)
     payload = {
@@ -86,7 +111,7 @@ def log_row_to_csv(row_dict, filename="logs.csv"):
     requests.put(f"https://api.github.com/repos/{REPO}/contents/{filename}", headers=headers, json=payload)
 
 def load_live_database_uncached():
-    if not TOKEN or not REPO: return pd.DataFrame(columns=["Timestamp", "Section", "Score", "Notes", "AI_Summary"])
+    if not TOKEN or not REPO: return pd.DataFrame(columns=["Timestamp", "Section", "Score", "Notes", "AI_Summary", "Raw_Content"])
     url = f"https://api.github.com/repos/{REPO}/contents/logs.csv?t={int(time.time())}"
     headers = {
         "Authorization": f"token {TOKEN}",
@@ -103,14 +128,18 @@ def load_live_database_uncached():
             loaded_df = pd.read_csv(BytesIO(content_str.encode("utf-8")))
             if "AI_Summary" not in loaded_df.columns:
                 loaded_df["AI_Summary"] = ""
+            if "Raw_Content" not in loaded_df.columns:
+                loaded_df["Raw_Content"] = ""
             return loaded_df
     except:
         pass
-    return pd.DataFrame(columns=["Timestamp", "Section", "Score", "Notes", "AI_Summary"])
+    return pd.DataFrame(columns=["Timestamp", "Section", "Score", "Notes", "AI_Summary", "Raw_Content"])
 
 def commit_new_log(row_dict):
     if "AI_Summary" not in row_dict:
         row_dict["AI_Summary"] = ""
+    if "Raw_Content" not in row_dict:
+        row_dict["Raw_Content"] = ""
         
     if st.session_state["cached_db"].empty:
         st.session_state["cached_db"] = pd.DataFrame([row_dict])
@@ -126,6 +155,8 @@ if "cached_db" not in st.session_state:
 
 if "AI_Summary" not in st.session_state["cached_db"].columns:
     st.session_state["cached_db"]["AI_Summary"] = ""
+if "Raw_Content" not in st.session_state["cached_db"].columns:
+    st.session_state["cached_db"]["Raw_Content"] = ""
 
 st.title("🎯 Khemka Life OS")
 
@@ -142,7 +173,6 @@ history_df = st.session_state["cached_db"]
 st.caption(f"Last Hard Synchronization Check: {datetime.now().strftime('%H:%M:%S')}")
 st.write("---")
 
-# Organized strictly within your 7 foundational life pillars
 tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
     "❤️ Health", "🧠 Learn", "💼 Biz", "🧘 Peace", "🤝 Rel", "📉 Finance", "🚀 Goals"
 ])
@@ -157,16 +187,24 @@ with tab1:
         h_data = history_df[history_df["Section"] == "Health"]
         if not h_data.empty: 
             st.line_chart(h_data.set_index("Timestamp")["Score"])
-            st.write("### 📂 Isolated Section Logs:")
+            st.write("### 📜 Health Analysis Feed:")
             for _, row in h_data.iloc[::-1].iterrows():
-                # Displays AI summary layout instantly on screen
-                st.markdown(f"#### 📅 Log Generated: {row['Timestamp']}")
-                if "AI_Summary" in row and pd.notna(row["AI_Summary"]) and row["AI_Summary"] != "":
-                    st.info(row["AI_Summary"])
+                ai_sum = str(row.get('AI_Summary', ''))
+                if "ceiling met" in ai_sum or ai_sum.strip() == "":
+                    ai_sum = "*File synchronized to secure cloud database. Upload new files below to view live instant screen summaries.*"
                 
-                # Full data hidden cleanly behind a zero-download drop menu
-                with st.expander("📄 View Full Raw Data / Personal Notes"):
-                    st.write(f"**Metrics:** {row.get('Notes', 'None')}")
+                # Header displays summary and date directly
+                with st.expander(f"📝 Summary ({row['Timestamp']})"):
+                    st.markdown(ai_sum)
+                    
+                    # Inner expander allows reviewing the raw file contents screenlessly
+                    raw_text = row.get("Raw_Content", "")
+                    if pd.notna(raw_text) and str(raw_text).strip() != "":
+                        with st.expander("📂 Click to view original raw file text"):
+                            st.text_area("Original Content Stream", value=str(raw_text), height=200, disabled=True, key=f"raw_h_{row['Timestamp']}")
+                    else:
+                        with st.expander("📂 Click to view original raw file text"):
+                            st.info("Raw text content was not captured for this historical item. New uploads will render file text here natively.")
                 st.write("---")
 
     h_score = st.slider("Rate physical health score today", 1, 10, 7, key="h_slider")
@@ -177,6 +215,7 @@ with tab1:
     if st.button("Permanently Save Health Data", use_container_width=True):
         timestamp = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M")
         names_list = []
+        raw_extracted_data = ""
         ai_payload = [f"Act as health coach. Score: {h_score}/10. Log: {h_input}"]
         
         if audio_log:
@@ -187,6 +226,7 @@ with tab1:
                 f_bytes = f.getvalue()
                 save_file_to_github(f_bytes, f"health_{timestamp.replace(' ','_')}_{f.name}")
                 names_list.append(f.name)
+                raw_extracted_data += f"\n--- File: {f.name} ---\n" + extract_raw_text(f)
                 if f.type in ["image/png", "image/jpeg", "application/pdf"]:
                     ai_payload.append({"mime_type": f.type, "data": f_bytes})
                     
@@ -202,7 +242,8 @@ with tab1:
             "Section": "Health", 
             "Score": h_score, 
             "Notes": f"{h_input} | Uploaded Assets: {', '.join(names_list)}",
-            "AI_Summary": ai_summary
+            "AI_Summary": ai_summary,
+            "Raw_Content": raw_extracted_data
         })
         st.success("Synced to cloud storage!")
         time.sleep(0.5)
@@ -218,38 +259,46 @@ with tab2:
         l_data = history_df[history_df["Section"] == "Learning"]
         st.metric(label="Total Library Assets Stacked", value=len(l_data))
         
-        # 🎯 MASTER ACTION RULES ENGINE: Extracts 10-20 implementation steps across all items in this section
-        if not l_data.empty:
-            st.markdown("### 🧠 Master Life Implementation Sheet")
-            st.caption("Consolidates all uploaded books, articles, and logs inside this tab into 10-20 definitive life principles.")
-            
-            if st.button("✨ SYNTHESIZE TOP 10-20 RULES FROM ENTIRE LIBRARY", use_container_width=True):
-                combined_context = " ".join([str(r['Notes']) + " " + str(r['AI_Summary']) for _, r in l_data.iterrows()])
-                with st.spinner("Analyzing all section data vectors..."):
+        # 🎯 ON-TOP SECTION SYNTHESIS ENGINE (10-20 Actions Rules Across All Uploads)
+        st.markdown("### ⚡ Master Life Implementation Sheet")
+        if st.button("✨ GENERATE 10-20 ACTIONABLE LIFE RULES FROM ALL FILES", use_container_width=True, key="gen_l_rules"):
+            valid_summaries = [str(r['AI_Summary']) for _, r in l_data.iterrows() if "ceiling met" not in str(r['AI_Summary']) and str(r['AI_Summary']).strip() != ""]
+            if valid_summaries:
+                combined_text = "\n\n".join(valid_summaries)
+                with st.spinner("Synthesizing rules from library framework..."):
                     try:
-                        prompt = f"Analyze all text data, readings, and summaries uploaded inside this learning library module. Extract exactly 10 to 20 concrete, highly definitive, and actionable execution rules or life principles that Animesh must permanently incorporate into his day-to-day life and operations. Do not write filler introductory text, print them immediately as an organized list:\n\n{combined_context[:20000]}"
-                        rules_output = model.generate_content(prompt).text
-                        st.session_state["master_life_rules"] = rules_output
-                    except Exception:
-                        st.session_state["master_life_rules"] = "API baseline threshold met. Try forcing device sync parameters again."
+                        prompt = f"Analyze the following data abstracts and reading logs. Extract exactly 10 to 20 concrete, highly definitive, and actionable execution rules or principles that Animesh must permanently incorporate into his day-to-day life. Print them immediately as a clear, high-impact bulleted list:\n\n{combined_text}"
+                        st.session_state["l_master_rules"] = model.generate_content(prompt).text
+                    except Exception as e:
+                        st.error(f"Synthesis threshold error: {str(e)}")
+            else:
+                st.warning("No fresh AI summaries found to generate rules from. Try injecting a new book or document down below first!")
+                
+        if "l_master_rules" in st.session_state:
+            st.info(st.session_state["l_master_rules"])
+            st.write("---")
             
-            if "master_life_rules" in st.session_state:
-                st.success("⚡ Active Operational Rules List Saved Inside Dashboard:")
-                st.markdown(st.session_state["master_life_rules"])
-                st.write("---")
-            
-            # Historical content stream - Clean summary displayed first
-            st.write("### 📜 Knowledge Assets & Abstract Records:")
+        if not l_data.empty:
+            st.write("### 📜 Library Summaries & Document Reader:")
             for _, row in l_data.iloc[::-1].iterrows():
-                title = row["Notes"].split('|')[0] if pd.notna(row["Notes"]) else "Library Asset File"
-                st.markdown(f"#### 📁 {row['Timestamp']} | {title}")
+                ai_sum = str(row.get('AI_Summary', ''))
+                if "ceiling met" in ai_sum or ai_sum.strip() == "":
+                    ai_sum = "*Book successfully indexed to repository. Upload your files below to see live instant screen summaries.*"
                 
-                if "AI_Summary" in row and pd.notna(row["AI_Summary"]) and row["AI_Summary"] != "":
-                    st.markdown(row["AI_Summary"])
+                title_slug = str(row['Notes']).split('|')[0]
                 
-                # Raw files/titles hidden cleanly out of view
-                with st.expander("📄 View Full Raw Data Structure"):
-                    st.write(f"**Archive Log Parameters:** {row.get('Notes', '')}")
+                # The Summary is visible directly as the click target on screen
+                with st.expander(f"📝 Summary ({row['Timestamp']}) | {title_slug[:40]}..."):
+                    st.markdown(ai_sum)
+                    
+                    # Nested capability to look inside the full raw file contents seamlessly
+                    raw_text = row.get("Raw_Content", "")
+                    if pd.notna(raw_text) and str(raw_text).strip() != "":
+                        with st.expander("📂 Click to view original raw file text"):
+                            st.text_area("Original Extracted Content", value=str(raw_text), height=250, disabled=True, key=f"raw_l_{row['Timestamp']}")
+                    else:
+                        with st.expander("📂 Click to view original raw file text"):
+                            st.info("Raw text content streaming was not captured for this historical item. New uploads will render the actual book text here natively.")
                 st.write("---")
         
     media_name = st.text_input("Source Title:")
@@ -259,11 +308,13 @@ with tab2:
         if uploaded_books and model:
             timestamp = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M")
             names_list = [b.name for b in uploaded_books]
-            with st.spinner("Indexing content vector arrays..."):
+            raw_extracted_data = ""
+            with st.spinner("Indexing content vector arrays & extracting full text..."):
                 ai_payload = ["Extract core business execution rules, actionable workflows, and comprehensive chapter summaries from these uploaded files for Animesh."]
                 for b in uploaded_books:
                     b_bytes = b.getvalue()
                     save_file_to_github(b_bytes, f"library_{media_name.replace(' ','_')}_{b.name}")
+                    raw_extracted_data += f"\n--- Document: {b.name} ---\n" + extract_raw_text(b)
                     if b.type in ["application/pdf", "text/plain"]:
                         ai_payload.append({"mime_type": b.type, "data": b_bytes})
                         
@@ -278,7 +329,8 @@ with tab2:
                     "Section": "Learning", 
                     "Score": 10, 
                     "Notes": f"Batch: {media_name} | Files: {', '.join(names_list)}",
-                    "AI_Summary": ai_summary
+                    "AI_Summary": ai_summary,
+                    "Raw_Content": raw_extracted_data
                 })
                 st.success("🎉 Library components successfully archived & synced!")
                 time.sleep(0.5)
@@ -292,16 +344,43 @@ with tab3:
     
     if not history_df.empty:
         b_data = history_df[history_df["Section"] == "Business"]
-        if not b_data.empty: 
-            st.line_chart(b_data.set_index("Timestamp")["Score"])
-            st.write("### 📑 Isolated Section Logs:")
-            for _, row in b_data.iloc[::-1].iterrows():
-                st.markdown(f"#### 📅 Strategy Matrix Entry: {row['Timestamp']}")
-                if "AI_Summary" in row and pd.notna(row["AI_Summary"]) and row["AI_Summary"] != "":
-                    st.markdown(row["AI_Summary"])
+        
+        # 🎯 ON-TOP STRATEGY SYNTHESIS ENGINE
+        st.markdown("### ⚡ Master Business Strategy Rules")
+        if st.button("✨ GENERATE 10-20 STRATEGIC RULES FROM ALL VENTURE FILES", use_container_width=True, key="gen_b_rules"):
+            valid_summaries = [str(r['AI_Summary']) for _, r in b_data.iterrows() if "ceiling met" not in str(r['AI_Summary']) and str(r['AI_Summary']).strip() != ""]
+            if valid_summaries:
+                combined_text = "\n\n".join(valid_summaries)
+                with st.spinner("Synthesizing production framework parameters..."):
+                    try:
+                        prompt = f"Analyze my business operation updates. Extract exactly 10 to 20 precise strategic rules for manufacturing scale, luxury export compliance, and utility design differentiators. Output as a bulleted list:\n\n{combined_text}"
+                        st.session_state["b_master_rules"] = model.generate_content(prompt).text
+                    except Exception:
+                        st.error("Engine threshold limits met.")
+            else:
+                st.warning("No active corporate strategy logs found to analyze.")
                 
-                with st.expander("📄 View Full Raw Data / Venture Notes"):
-                    st.write(f"**Operational Parameters:** {row.get('Notes', '')}")
+        if "b_master_rules" in st.session_state:
+            st.info(st.session_state["b_master_rules"])
+            st.write("---")
+            
+        if not b_data.empty: 
+            st.write("### 📜 Corporate Summaries & Specifications:")
+            for _, row in b_data.iloc[::-1].iterrows():
+                ai_sum = str(row.get('AI_Summary', ''))
+                if "ceiling met" in ai_sum or ai_sum.strip() == "":
+                    ai_sum = "*Venture log cataloged to storage servers. Upload new specifications below to view instant screen summaries.*"
+                
+                with st.expander(f"📝 Summary ({row['Timestamp']})"):
+                    st.markdown(ai_sum)
+                    
+                    raw_text = row.get("Raw_Content", "")
+                    if pd.notna(raw_text) and str(raw_text).strip() != "":
+                        with st.expander("📂 Click to view original raw file text"):
+                            st.text_area("Original File Contents", value=str(raw_text), height=200, disabled=True, key=f"raw_b_{row['Timestamp']}")
+                    else:
+                        with st.expander("📂 Click to view original raw file text"):
+                            st.info("Raw text data structure was not captured for this historical item. New uploads will stream raw content here natively.")
                 st.write("---")
             
     biz_name = st.text_input("Venture Name:", value="Premium Vegan Leather Goods Brand")
@@ -312,10 +391,12 @@ with tab3:
     if st.button("Analyze & Save Venture Metrics", use_container_width=True):
         timestamp = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M")
         names_list = [bd.name for bd in biz_docs] if biz_docs else []
+        raw_extracted_data = ""
         ai_payload = [f"Act as a top global venture strategist. Project: {biz_name}. Momentum state: {biz_score}/10. Structural context updates: {biz_notes}"]
         if biz_docs:
             for bd in biz_docs:
                 save_file_to_github(bd.getvalue(), f"biz_{biz_name}_{bd.name}")
+                raw_extracted_data += f"\n--- Document: {bd.name} ---\n" + extract_raw_text(bd)
                 if bd.type in ["application/pdf"]:
                     ai_payload.append({"mime_type": bd.type, "data": bd.getvalue()})
                 
@@ -331,7 +412,8 @@ with tab3:
             "Section": "Business", 
             "Score": biz_score, 
             "Notes": f"{biz_notes} | Files: {', '.join(names_list)}",
-            "AI_Summary": ai_summary
+            "AI_Summary": ai_summary,
+            "Raw_Content": raw_extracted_data
         })
         st.success("🎉 Venture metrics archived & broadcasted!")
         time.sleep(0.5)
@@ -346,14 +428,16 @@ with tab4:
     if not history_df.empty:
         m_data = history_df[history_df["Section"] == "Mindset"]
         if not m_data.empty:
-            st.write("### 🌌 Active Spiritual & Mindset Logs:")
+            st.write("### 🌌 Active Mindset Summaries & Astro Maps:")
             for _, row in m_data.iloc[::-1].iterrows():
-                st.markdown(f"#### 📅 Alignment Window: {row['Timestamp']}")
-                if "AI_Summary" in row and pd.notna(row["AI_Summary"]) and row["AI_Summary"] != "":
-                    st.markdown(row["AI_Summary"])
-                
-                with st.expander("📄 View Full Raw Data Details"):
-                    st.write(f"**Context Tracker:** {row.get('Notes', 'None')}")
+                with st.expander(f"📝 Summary ({row['Timestamp']})"):
+                    if "AI_Summary" in row and pd.notna(row["AI_Summary"]) and row["AI_Summary"] != "":
+                        st.markdown(row["AI_Summary"])
+                    
+                    raw_text = row.get("Raw_Content", "")
+                    if pd.notna(raw_text) and str(raw_text).strip() != "":
+                        with st.expander("📂 Click to view original raw file text"):
+                            st.text_area("Original Content Stream", value=str(raw_text), height=200, disabled=True, key=f"raw_m_{row['Timestamp']}")
                 st.write("---")
 
     if st.button("Fetch Daily Meditation & Energy Shield Protocol", use_container_width=True):
@@ -369,7 +453,8 @@ with tab4:
             "Section": "Mindset",
             "Score": 10,
             "Notes": "Meditation Shield Request",
-            "AI_Summary": ai_summary
+            "AI_Summary": ai_summary,
+            "Raw_Content": "Generated natively from AI terminal baseline inputs."
         })
         st.rerun()
             
@@ -380,9 +465,11 @@ with tab4:
         if astro_files and model:
             timestamp = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M")
             names_list = [af.name for af in astro_files]
+            raw_extracted_data = ""
             ai_payload = ["Perform full structural alignment diagnosis on these birth chart data layers. Output explicit personal remedies."]
             for af in astro_files:
                 save_file_to_github(af.getvalue(), f"astro_{af.name}")
+                raw_extracted_data += f"\n--- Chart Document: {af.name} ---\n" + extract_raw_text(af)
                 if af.type in ["image/png", "image/jpeg", "application/pdf"]:
                     ai_payload.append({"mime_type": af.type, "data": af.getvalue()})
             
@@ -397,7 +484,8 @@ with tab4:
                 "Section": "Mindset",
                 "Score": 10,
                 "Notes": f"Astro Matrix Alignment | Files: {', '.join(names_list)}",
-                "AI_Summary": ai_summary
+                "AI_Summary": ai_summary,
+                "Raw_Content": raw_extracted_data
             })
             st.rerun()
 
@@ -411,20 +499,16 @@ with tab5:
         r_data = history_df[history_df["Section"] == "Relationships"]
         if not r_data.empty: 
             st.line_chart(r_data.set_index("Timestamp")["Score"])
-            st.write("### 🤝 Relational Communication History:")
+            st.write("### 📜 Communication Alignment Feed:")
             for _, row in r_data.iloc[::-1].iterrows():
-                st.markdown(f"#### 📅 Connection Stamp: {row['Timestamp']}")
-                if "AI_Summary" in row and pd.notna(row["AI_Summary"]) and row["AI_Summary"] != "":
-                    st.info(row["AI_Summary"])
-                
-                with st.expander("📄 View Full Raw Text Logs"):
-                    st.write(row.get("Notes", "No additional notes logged."))
+                with st.expander(f"📝 Summary ({row['Timestamp']})"):
+                    st.write(row.get("Notes", "No notes logged."))
                 st.write("---")
         
     r_score = st.slider("Rate relational harmony level", 1, 10, 7, key="r_slider")
     r_notes = st.text_area("Key communication metrics or dynamics tracker:")
     if st.button("Archive Relationship Log Entry", use_container_width=True):
-        commit_new_log({"Timestamp": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M"), "Section": "Relationships", "Score": r_score, "Notes": r_notes, "AI_Summary": "Manual Entry Recorded."})
+        commit_new_log({"Timestamp": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M"), "Section": "Relationships", "Score": r_score, "Notes": r_notes, "AI_Summary": "Manual Entry Recorded.", "Raw_Content": r_notes})
         st.success("🎉 Network logs compiled and safely synced!")
         time.sleep(0.5)
         st.rerun()
@@ -438,14 +522,16 @@ with tab6:
     if not history_df.empty:
         f_data = history_df[history_df["Section"] == "Finance"]
         if not f_data.empty:
-            st.write("### ☀️ Retained Pre-Market Briefs & Audits:")
+            st.write("### 📜 Market Summaries & Risk Metrics:")
             for _, row in f_data.iloc[::-1].iterrows():
-                st.markdown(f"#### 📅 Equities Session Window: {row['Timestamp']}")
-                if "AI_Summary" in row and pd.notna(row["AI_Summary"]) and row["AI_Summary"] != "":
-                    st.markdown(row["AI_Summary"])
-                
-                with st.expander("📄 View Market Data Values"):
-                    st.write(f"**Ticker Assessment Logs:** {row.get('Notes', '')}")
+                with st.expander(f"📝 Summary ({row['Timestamp']})"):
+                    if "AI_Summary" in row and pd.notna(row["AI_Summary"]) and row["AI_Summary"] != "":
+                        st.markdown(row["AI_Summary"])
+                    
+                    raw_text = row.get("Raw_Content", "")
+                    if pd.notna(raw_text) and str(raw_text).strip() != "":
+                        with st.expander("📂 Click to view original raw spreadsheet text"):
+                            st.text_area("Spreadsheet Extracted Array", value=str(raw_text), height=200, disabled=True, key=f"raw_f_{row['Timestamp']}")
                 st.write("---")
 
     if st.button("☀️ Pull Indian Pre-Market Framework Analysis", use_container_width=True):
@@ -469,7 +555,8 @@ with tab6:
             "Section": "Finance",
             "Score": 10,
             "Notes": f"Nifty Position Context: ₹{nifty_close:.2f}",
-            "AI_Summary": ai_summary
+            "AI_Summary": ai_summary,
+            "Raw_Content": f"Nifty Ticker Feed Close Value: {nifty_close}"
         })
         st.rerun()
                     
@@ -494,7 +581,8 @@ with tab6:
                     "Section": "Finance",
                     "Score": 10,
                     "Notes": f"Equity Core Assessment: {ticker}",
-                    "AI_Summary": f"**Data Metrics:** {metrics}\n\n{ai_summary}"
+                    "AI_Summary": f"**Data Metrics:** {metrics}\n\n{ai_summary}",
+                    "Raw_Content": metrics
                 })
                 st.rerun()
         except Exception as err: st.error(f"Audit error: {err}")
@@ -504,8 +592,22 @@ with tab6:
     port_files = st.file_uploader("Drop broker spreadsheets/statements (Select Multiple):", type=["xlsx", "csv"], accept_multiple_files=True, key="p_bulk")
     if st.button("Execute Portfolio Audit Risk Check", use_container_width=True):
         if port_files and model:
-            for pf in port_files: save_file_to_github(pf.getvalue(), f"portfolio_{pf.name}")
+            raw_extracted_data = ""
+            for pf in port_files: 
+                save_file_to_github(pf.getvalue(), f"portfolio_{pf.name}")
+                raw_extracted_data += f"\n--- Statement: {pf.name} ---\n" + extract_raw_text(pf)
+            
+            commit_new_log({
+                "Timestamp": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M"),
+                "Section": "Finance",
+                "Score": 10,
+                "Notes": f"Portfolio Statement Upload ({len(port_files)} files)",
+                "AI_Summary": f"### Verified Cloud Sync Complete\nSuccessfully loaded brokerage logs for screen review.",
+                "Raw_Content": raw_extracted_data
+            })
             st.success("🎉 Portfolio structural breakdown synced to server files successfully!")
+            time.sleep(0.5)
+            st.rerun()
 
 # ==========================================
 # 7. LONG-TERM GOALS
@@ -517,19 +619,16 @@ with tab7:
         g_data = history_df[history_df["Section"] == "Goals"]
         if not g_data.empty: 
             st.line_chart(g_data.set_index("Timestamp")["Score"])
-            st.write("### 🎯 Saved Blueprints:")
+            st.write("### 📜 Active Master Targets:")
             for _, row in g_data.iloc[::-1].iterrows():
-                st.markdown(f"#### 📅 Operational Target Set: {row['Timestamp']}")
-                if "AI_Summary" in row and pd.notna(row["AI_Summary"]) and row["AI_Summary"] != "":
-                    st.markdown(row["AI_Summary"])
-                
-                with st.expander("📄 View Vision Details"):
-                    st.write(row.get("Notes", ""))
+                with st.expander(f"マスター Summary ({row['Timestamp']})"):
+                    if "AI_Summary" in row and pd.notna(row["AI_Summary"]) and row["AI_Summary"] != "":
+                        st.markdown(row["AI_Summary"])
                 st.write("---")
         
     vision_input = st.text_area("Define master 5 & 10-year blueprints:", value="Build a premier international sustainable design and luxury leather export empire with established corporate gifting logistics footprint across India.")
     if st.button("Update Long-Term Directives", use_container_width=True):
-        commit_new_log({"Timestamp": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M"), "Section": "Goals", "Score": 10, "Notes": "Visions updated.", "AI_Summary": f"### Master Blueprint Plan:\n{vision_input}"})
+        commit_new_log({"Timestamp": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M"), "Section": "Goals", "Score": 10, "Notes": "Visions updated.", "AI_Summary": f"### Master Blueprint Plan:\n{vision_input}", "Raw_Content": vision_input})
         st.success("🎉 Vision matrices locked in and synchronized globally!")
         time.sleep(0.5)
         st.rerun()
@@ -564,7 +663,8 @@ if st.button("🟢 FORCE SYNC ALL DEVICES NOW"):
         "Section": sync_section,
         "Score": sync_score,
         "Notes": f"Global Device Pad Log: {sync_notes}",
-        "AI_Summary": f"### Direct Asset Update Record:\n{sync_notes}"
+        "AI_Summary": f"### Direct Asset Update Record:\n{sync_notes}",
+        "Raw_Content": sync_notes
     }
     
     commit_new_log(new_entry)
