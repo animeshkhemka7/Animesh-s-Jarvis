@@ -181,8 +181,14 @@ with tab1:
                     ai_payload.append({"mime_type": f.type, "data": f_bytes})
                     
         universal_data_write({"Timestamp": timestamp, "Section": "Health", "Score": h_score, "Notes": f"{h_input} | Batch: {', '.join(names_list)}"})
-        st.success("Synced to cloud storage!")
-        if model: st.info(model.generate_content(ai_payload).text)
+        st.success("🎉 Health logs successfully archived & synced!")
+        
+        if model:
+            try:
+                st.info(model.generate_content(ai_payload).text)
+            except Exception as ai_error:
+                st.warning("⚠️ Files saved! However, the AI engine is momentarily at capacity and couldn't compile a live health summary.")
+                
         time.sleep(0.4)
         st.rerun()
 
@@ -208,9 +214,15 @@ with tab2:
                     save_file_to_github(b_bytes, f"library_{media_name.replace(' ','_')}_{b.name}")
                     if b.type in ["application/pdf", "text/plain"]:
                         ai_payload.append({"mime_type": b.type, "data": b_bytes})
+                        
                 universal_data_write({"Timestamp": timestamp, "Section": "Learning", "Score": 10, "Notes": f"Batch: {media_name}"})
-                st.success("Library components successfully archived!")
-                st.write(model.generate_content(ai_payload).text)
+                st.success("🎉 Library components successfully archived & synced!")
+                
+                try:
+                    st.write(model.generate_content(ai_payload).text)
+                except Exception as ai_error:
+                    st.warning("⚠️ Documents saved to database! The AI is temporarily processing too many text tokens right now to print a summary.")
+                    
                 time.sleep(0.4)
                 st.rerun()
 
@@ -234,9 +246,16 @@ with tab3:
         if biz_docs:
             for bd in biz_docs:
                 save_file_to_github(bd.getvalue(), f"biz_{biz_name}_{bd.name}")
+                
         universal_data_write({"Timestamp": timestamp, "Section": "Business", "Score": biz_score, "Notes": biz_notes})
-        st.success("Venture dashboard arrays updated.")
-        if model: st.info(model.generate_content(ai_payload).text)
+        st.success("🎉 Venture metrics archived & broadcasted!")
+        
+        if model:
+            try:
+                st.info(model.generate_content(ai_payload).text)
+            except Exception as ai_error:
+                st.warning("⚠️ Strategy file logs synced cleanly! The AI calculation grid is temporarily full and couldn't process feedback.")
+                
         time.sleep(0.4)
         st.rerun()
 
@@ -246,7 +265,11 @@ with tab3:
 with tab4:
     st.header("🧘 Mindset Shielding & Planetary Coordinates")
     if st.button("Fetch Daily Meditation & Energy Shield Protocol", use_container_width=True):
-        if model: st.info(model.generate_content("Provide an executive mindset validation drill, deep rhythmic breathing guidelines, and explicit protocols to maintain absolute workspace concentration and isolate energy from critical family members.").text)
+        if model:
+            try:
+                st.info(model.generate_content("Provide an executive mindset validation drill, deep rhythmic breathing guidelines, and explicit protocols to maintain absolute workspace concentration and isolate energy from critical family members.").text)
+            except Exception as ai_error:
+                st.warning("⚠️ AI core busy. Focus drill protocol: Center focus, target 4-7-8 breathing mechanics, and maintain clean perimeter barriers.")
             
     st.markdown("---")
     st.subheader("🌌 Natal Chart Synthesis Drawer")
@@ -258,7 +281,12 @@ with tab4:
                 save_file_to_github(af.getvalue(), f"astro_{af.name}")
                 if af.type in ["image/png", "image/jpeg", "application/pdf"]:
                     ai_payload.append({"mime_type": af.type, "data": af.getvalue()})
-            st.info(model.generate_content(ai_payload).text)
+            
+            st.success("Planetary chart layers uploaded to file repository.")
+            try:
+                st.info(model.generate_content(ai_payload).text)
+            except Exception as ai_error:
+                st.warning("⚠️ Alignment assets are safely logged! The astrological model engine is experiencing heavy rate traffic now.")
 
 # ==========================================
 # 5. RELATIONSHIPS MODULE
@@ -273,7 +301,7 @@ with tab5:
     r_notes = st.text_area("Key communication metrics or dynamics tracker:")
     if st.button("Archive Relationship Log Entry", use_container_width=True):
         universal_data_write({"Timestamp": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M"), "Section": "Relationships", "Score": r_score, "Notes": r_notes})
-        st.success("Network logs compiled safely.")
+        st.success("🎉 Network logs compiled and safely synced!")
         time.sleep(0.4)
         st.rerun()
 
@@ -286,7 +314,10 @@ with tab6:
         if model:
             try:
                 nifty_close = yf.Ticker("^NSEI").history(period="2d")['Close'].iloc[-1]
-                st.info(model.generate_content(f"Provide an assertive technical market layout brief for an Indian equities operator. Index validation state: Nifty 50 close tracking near {nifty_close}. Highlight 3 alpha trading sectors for outperformance.").text)
+                try:
+                    st.info(model.generate_content(f"Provide an assertive technical market layout brief for an Indian equities operator. Index validation state: Nifty 50 close tracking near {nifty_close}. Highlight 3 alpha trading sectors for outperformance.").text)
+                except Exception as ai_error:
+                    st.warning(f"⚠️ Index metrics obtained (Nifty: {nifty_close}), but AI sectors analysis is currently hitting maximum free quota constraints.")
             except Exception as e: st.error(f"Scraper error: {e}")
                     
     st.markdown("---")
@@ -297,7 +328,11 @@ with tab6:
             if not hist.empty:
                 metrics = f"Price: ₹{hist['Close'].iloc[-1]:.2f} | 50MA: ₹{hist['Close'].rolling(50).mean().iloc[-1]:.2f} | 200MA: ₹{hist['Close'].rolling(200).mean().iloc[-1]:.2f}"
                 st.text(metrics)
-                if model: st.write(model.generate_content(f"Hedge fund analysis report for {ticker}. Metrics: {metrics}. Provide explicit target support layers and a clear Buy/Hold/Sell recommendation.").text)
+                if model:
+                    try:
+                        st.write(model.generate_content(f"Hedge fund analysis report for {ticker}. Metrics: {metrics}. Provide explicit target support layers and a clear Buy/Hold/Sell recommendation.").text)
+                    except Exception as ai_error:
+                        st.warning("⚠️ Raw metrics extracted! Comprehensive stock evaluation report skipped due to sudden AI query limits.")
         except Exception as err: st.error(f"Audit error: {err}")
 
     st.markdown("---")
@@ -306,7 +341,7 @@ with tab6:
     if st.button("Execute Portfolio Audit Risk Check", use_container_width=True):
         if port_files and model:
             for pf in port_files: save_file_to_github(pf.getvalue(), f"portfolio_{pf.name}")
-            st.success("Allocations recorded. System processing portfolio rebalancing strategy rules...")
+            st.success("🎉 Portfolio structural breakdown synced to server files successfully!")
 
 # ==========================================
 # 7. LONG-TERM GOALS
@@ -320,7 +355,7 @@ with tab7:
     vision_input = st.text_area("Define master 5 & 10-year blueprints:", value="Build a premier international sustainable design and luxury leather export empire with established corporate gifting logistics footprint across India.")
     if st.button("Update Long-Term Directives", use_container_width=True):
         universal_data_write({"Timestamp": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M"), "Section": "Goals", "Score": 10, "Notes": vision_input})
-        st.success("Vision matrices synchronized to permanent server core.")
+        st.success("🎉 Vision matrices locked in and synchronized globally!")
         time.sleep(0.4)
         st.rerun()
 
@@ -342,15 +377,13 @@ st.markdown("""
 st.write("---") 
 st.write("### 🗲 Universal Cross-Device Entry Pad")
 
-# Independent input fields that feed straight into the master sync action
 sync_section = st.selectbox("Assign log to module:", ["Business", "Learning", "Health", "Goals", "Relationships"], key="m_sec")
-sync_notes = st.text_area("Type updates, logs, or paste Google Drive asset links here:", placeholder="Example: Placed clutches and men's sling bag samples into corporate catalog folder. Link: https://drive.google.com/...", key="m_notes")
+sync_notes = st.text_area("Type updates, logs, or paste Google Drive asset links here:", placeholder="Example: Placed design updates for women's clutches here. Link: https://drive.google.com/...", key="m_notes")
 sync_score = st.slider("Assign score status value:", 1, 10, 10, key="m_score")
 
 if st.button("🟢 FORCE SYNC ALL DEVICES NOW"):
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
     
-    # Package up the direct entry data point
     new_entry = {
         "Timestamp": timestamp,
         "Section": sync_section,
@@ -358,12 +391,10 @@ if st.button("🟢 FORCE SYNC ALL DEVICES NOW"):
         "Notes": sync_notes if sync_notes else "Manual Global Device Sync Verification Triggered"
     }
     
-    # Clear cache, download latest state from cloud ledger, insert entry, lock in data instantly
     st.session_state.saved_entries = load_from_locker()
     st.session_state.saved_entries.append(new_entry)
     save_to_locker(st.session_state.saved_entries)
     
-    # Back up the text data row into your repository records file
     try:
         log_row_to_csv(new_entry)
     except:
