@@ -37,7 +37,6 @@ def call_gemini_engine(prompt_text):
     if not API_KEY:
         return "⚠️ Gemini API Key missing in Settings -> Secrets."
     
-    # Dynamically loops through variant connections seamlessly at runtime to eliminate 404 version failures
     models_to_try = ['gemini-1.5-flash', 'gemini-pro', 'models/gemini-1.5-flash', 'models/gemini-pro']
     last_err = ""
     
@@ -214,7 +213,8 @@ with tab1:
         if not h_data.empty: 
             st.line_chart(h_data.set_index("Timestamp")["Score"])
             st.write("### 📜 Health Analysis Feed:")
-            for _, row in h_data.iloc[::-1].iterrows():
+            # FIXED: Added enumerated idx loop parsing to force absolute key uniqueness on screen elements
+            for idx, (_, row) in enumerate(h_data.iloc[::-1].iterrows()):
                 ai_sum = str(row.get('AI_Summary', ''))
                 raw_text = str(row.get("Raw_Content", ""))
                 
@@ -225,7 +225,7 @@ with tab1:
                     st.markdown(ai_sum)
                     if raw_text.strip() != "" and "v1beta" not in raw_text and "ceiling met" not in raw_text:
                         with st.expander("📂 Click to view original raw file text"):
-                            st.text_area("Original Content Stream", value=raw_text, height=200, disabled=True, key=f"raw_h_{row['Timestamp']}")
+                            st.text_area("Original Content Stream", value=raw_text, height=200, disabled=True, key=f"raw_h_{row['Timestamp']}_{idx}")
                 st.write("---")
 
     h_score = st.slider("Rate physical health score today", 1, 10, 7, key="h_slider")
@@ -269,7 +269,6 @@ with tab2:
         l_data = history_df[history_df["Section"] == "Learning"]
         st.metric(label="Total Library Assets Stacked", value=len(l_data))
         
-        # 🎯 MASTER ACTION RULES ENGINE
         st.markdown("### ⚡ Master Life Implementation Sheet")
         if st.button("✨ GENERATE 10-20 ACTIONABLE LIFE RULES FROM ALL FILES", use_container_width=True, key="gen_l_rules"):
             valid_contents = [str(r['Raw_Content']) for _, r in l_data.iterrows() if "v1beta" not in str(r['Raw_Content']) and "ceiling met" not in str(r['Raw_Content']) and str(r['Raw_Content']).strip() != ""]
@@ -288,7 +287,8 @@ with tab2:
             
         if not l_data.empty:
             st.write("### 📜 Library Summaries & Document Reader:")
-            for _, row in l_data.iloc[::-1].iterrows():
+            # FIXED: Wrapped loop extraction parameters inside enumerated layout signatures to neutralize key duplication
+            for idx, (_, row) in enumerate(l_data.iloc[::-1].iterrows()):
                 ai_sum = str(row.get('AI_Summary', ''))
                 raw_text = str(row.get("Raw_Content", ""))
                 
@@ -301,7 +301,7 @@ with tab2:
                     st.markdown(ai_sum)
                     if raw_text.strip() != "" and "v1beta" not in raw_text and "ceiling met" not in raw_text:
                         with st.expander("📂 Click to view original raw file text"):
-                            st.text_area("Original Extracted Content", value=raw_text, height=250, disabled=True, key=f"raw_l_{row['Timestamp']}")
+                            st.text_area("Original Extracted Content", value=raw_text, height=250, disabled=True, key=f"raw_l_{row['Timestamp']}_{idx}")
                 st.write("---")
         
     media_name = st.text_input("Source Title:")
@@ -360,7 +360,8 @@ with tab3:
             
         if not b_data.empty: 
             st.write("### 📜 Corporate Summaries & Specifications:")
-            for _, row in b_data.iloc[::-1].iterrows():
+            # FIXED: Embedded absolute element uniqueness keys inside row enumerators
+            for idx, (_, row) in enumerate(b_data.iloc[::-1].iterrows()):
                 ai_sum = str(row.get('AI_Summary', ''))
                 raw_text = str(row.get("Raw_Content", ""))
                 
@@ -371,7 +372,7 @@ with tab3:
                     st.markdown(ai_sum)
                     if raw_text.strip() != "" and "v1beta" not in raw_text and "ceiling met" not in raw_text:
                         with st.expander("📂 Click to view original raw file text"):
-                            st.text_area("Original File Contents", value=raw_text, height=200, disabled=True, key=f"raw_b_{row['Timestamp']}")
+                            st.text_area("Original File Contents", value=raw_text, height=200, disabled=True, key=f"raw_b_{row['Timestamp']}_{idx}")
                 st.write("---")
             
     biz_name = st.text_input("Venture Name:", value="Premium Vegan Leather Goods Brand")
@@ -414,7 +415,8 @@ with tab4:
         m_data = history_df[history_df["Section"] == "Mindset"]
         if not m_data.empty:
             st.write("### 🌌 Active Mindset Summaries & Astro Maps:")
-            for _, row in m_data.iloc[::-1].iterrows():
+            # FIXED: Guarded widgets with incremental loop signatures to block Streamlit runtime keys crashes
+            for idx, (_, row) in enumerate(m_data.iloc[::-1].iterrows()):
                 with st.expander(f"📝 View Summary ({row['Timestamp']})"):
                     if "AI_Summary" in row and pd.notna(row["AI_Summary"]) and row["AI_Summary"] != "":
                         st.markdown(row["AI_Summary"])
@@ -422,7 +424,7 @@ with tab4:
                     raw_text = str(row.get("Raw_Content", ""))
                     if raw_text.strip() != "" and "v1beta" not in raw_text and "ceiling met" not in raw_text:
                         with st.expander("📂 Click to view original raw file text"):
-                            st.text_area("Original Content Stream", value=raw_text, height=200, disabled=True, key=f"raw_m_{row['Timestamp']}")
+                            st.text_area("Original Content Stream", value=raw_text, height=200, disabled=True, key=f"raw_m_{row['Timestamp']}_{idx}")
                 st.write("---")
 
     if st.button("Fetch Daily Meditation & Energy Shield Protocol", use_container_width=True):
@@ -498,7 +500,8 @@ with tab6:
         f_data = history_df[history_df["Section"] == "Finance"]
         if not f_data.empty:
             st.write("### 📜 Market Summaries & Risk Metrics:")
-            for _, row in f_data.iloc[::-1].iterrows():
+            # FIXED: Mapped loop index values cleanly to layout frames to restrict duplicate parsing errors
+            for idx, (_, row) in enumerate(f_data.iloc[::-1].iterrows()):
                 with st.expander(f"📝 View Summary ({row['Timestamp']})"):
                     if "AI_Summary" in row and pd.notna(row["AI_Summary"]) and row["AI_Summary"] != "":
                         st.markdown(row["AI_Summary"])
@@ -506,7 +509,7 @@ with tab6:
                     raw_text = str(row.get("Raw_Content", ""))
                     if raw_text.strip() != "" and "v1beta" not in raw_text and "ceiling met" not in raw_text:
                         with st.expander("📂 Click to view original raw spreadsheet text"):
-                            st.text_area("Spreadsheet Extracted Array", value=raw_text, height=200, disabled=True, key=f"raw_f_{row['Timestamp']}")
+                            st.text_area("Spreadsheet Extracted Array", value=raw_text, height=200, disabled=True, key=f"raw_f_{row['Timestamp']}_{idx}")
                 st.write("---")
 
     if st.button("☀️ Pull Indian Pre-Market Framework Analysis", use_container_width=True):
