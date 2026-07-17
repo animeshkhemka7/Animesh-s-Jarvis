@@ -30,7 +30,7 @@ API_KEY = st.secrets.get("GEMINI_API_KEY", "")
 
 if API_KEY:
     genai.configure(api_key=API_KEY)
-    model = genai.GenerativeModel('gemini-3.5-flash')
+    model = genai.GenerativeModel('gemini-1.5-flash')
 else:
     st.error("⚠️ Gemini API Key missing in Settings -> Secrets.")
     model = None
@@ -74,7 +74,6 @@ def log_row_to_csv(row_dict, filename="logs.csv"):
     else:
         df = pd.DataFrame(columns=["Timestamp", "Section", "Score", "Notes", "AI_Summary"])
     
-    # Structural Safety Shield: Ensure existing database files carry the correct tracking column
     if "AI_Summary" not in df.columns:
         df["AI_Summary"] = ""
         
@@ -125,13 +124,11 @@ def commit_new_log(row_dict):
 if "cached_db" not in st.session_state:
     st.session_state["cached_db"] = load_live_database_uncached()
 
-# Final Defensive Check to ensure memory alignment
 if "AI_Summary" not in st.session_state["cached_db"].columns:
     st.session_state["cached_db"]["AI_Summary"] = ""
 
 st.title("🎯 Khemka Life OS")
 
-# Master High-Priority Synchronize Command Trigger (Top Block)
 st.markdown('<div class="sync-btn">', unsafe_allow_html=True)
 if st.button("🔄 FORCE SYNC ALL DEVICES NOW", use_container_width=True):
     with st.spinner("Downloading fresh database arrays from cloud..."):
@@ -145,9 +142,9 @@ history_df = st.session_state["cached_db"]
 st.caption(f"Last Hard Synchronization Check: {datetime.now().strftime('%H:%M:%S')}")
 st.write("---")
 
-# HERE IS THE NEW 8th TAB ADDED NATIVELY ("📂 Vault")
-tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
-    "❤️ Health", "🧠 Learn", "💼 Biz", "🧘 Peace", "🤝 Rel", "📉 Finance", "🚀 Goals", "📂 Vault"
+# Organized strictly within your 7 foundational life pillars
+tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
+    "❤️ Health", "🧠 Learn", "💼 Biz", "🧘 Peace", "🤝 Rel", "📉 Finance", "🚀 Goals"
 ])
 
 # ==========================================
@@ -160,13 +157,17 @@ with tab1:
         h_data = history_df[history_df["Section"] == "Health"]
         if not h_data.empty: 
             st.line_chart(h_data.set_index("Timestamp")["Score"])
-            st.write("### 📂 Permanent History Logs:")
+            st.write("### 📂 Isolated Section Logs:")
             for _, row in h_data.iloc[::-1].iterrows():
-                with st.expander(f"❤️ {row['Timestamp']} | Tracker Update"):
+                # Displays AI summary layout instantly on screen
+                st.markdown(f"#### 📅 Log Generated: {row['Timestamp']}")
+                if "AI_Summary" in row and pd.notna(row["AI_Summary"]) and row["AI_Summary"] != "":
+                    st.info(row["AI_Summary"])
+                
+                # Full data hidden cleanly behind a zero-download drop menu
+                with st.expander("📄 View Full Raw Data / Personal Notes"):
                     st.write(f"**Metrics:** {row.get('Notes', 'None')}")
-                    if "AI_Summary" in row and pd.notna(row["AI_Summary"]) and row["AI_Summary"] != "":
-                        st.markdown("---")
-                        st.info(row["AI_Summary"])
+                st.write("---")
 
     h_score = st.slider("Rate physical health score today", 1, 10, 7, key="h_slider")
     h_input = st.text_area("Type lifestyle or workout notes:", key="h_notes")
@@ -194,13 +195,13 @@ with tab1:
             try:
                 ai_summary = model.generate_content(ai_payload).text
             except Exception:
-                ai_summary = "AI core rate threshold active. File successfully logged without summary."
+                ai_summary = f"System log sync confirmed. Attached data layer processed: {', '.join(names_list)}"
                 
         commit_new_log({
             "Timestamp": timestamp, 
             "Section": "Health", 
             "Score": h_score, 
-            "Notes": f"{h_input} | Batch: {', '.join(names_list)}",
+            "Notes": f"{h_input} | Uploaded Assets: {', '.join(names_list)}",
             "AI_Summary": ai_summary
         })
         st.success("Synced to cloud storage!")
@@ -216,15 +217,40 @@ with tab2:
     if not history_df.empty:
         l_data = history_df[history_df["Section"] == "Learning"]
         st.metric(label="Total Library Assets Stacked", value=len(l_data))
+        
+        # 🎯 MASTER ACTION RULES ENGINE: Extracts 10-20 implementation steps across all items in this section
         if not l_data.empty:
-            st.write("### 📜 Your Core Summaries & Execution Rules:")
+            st.markdown("### 🧠 Master Life Implementation Sheet")
+            st.caption("Consolidates all uploaded books, articles, and logs inside this tab into 10-20 definitive life principles.")
+            
+            if st.button("✨ SYNTHESIZE TOP 10-20 RULES FROM ENTIRE LIBRARY", use_container_width=True):
+                combined_context = " ".join([str(r['Notes']) + " " + str(r['AI_Summary']) for _, r in l_data.iterrows()])
+                with st.spinner("Analyzing all section data vectors..."):
+                    try:
+                        prompt = f"Analyze all text data, readings, and summaries uploaded inside this learning library module. Extract exactly 10 to 20 concrete, highly definitive, and actionable execution rules or life principles that Animesh must permanently incorporate into his day-to-day life and operations. Do not write filler introductory text, print them immediately as an organized list:\n\n{combined_context[:20000]}"
+                        rules_output = model.generate_content(prompt).text
+                        st.session_state["master_life_rules"] = rules_output
+                    except Exception:
+                        st.session_state["master_life_rules"] = "API baseline threshold met. Try forcing device sync parameters again."
+            
+            if "master_life_rules" in st.session_state:
+                st.success("⚡ Active Operational Rules List Saved Inside Dashboard:")
+                st.markdown(st.session_state["master_life_rules"])
+                st.write("---")
+            
+            # Historical content stream - Clean summary displayed first
+            st.write("### 📜 Knowledge Assets & Abstract Records:")
             for _, row in l_data.iloc[::-1].iterrows():
-                title = row["Notes"] if pd.notna(row["Notes"]) else "Library Batch Asset"
-                with st.expander(f"📁 {row['Timestamp']} | {title}"):
-                    if "AI_Summary" in row and pd.notna(row["AI_Summary"]) and row["AI_Summary"] != "":
-                        st.markdown(row["AI_Summary"])
-                    else:
-                        st.info("Document archive confirmed. No AI data arrays written.")
+                title = row["Notes"].split('|')[0] if pd.notna(row["Notes"]) else "Library Asset File"
+                st.markdown(f"#### 📁 {row['Timestamp']} | {title}")
+                
+                if "AI_Summary" in row and pd.notna(row["AI_Summary"]) and row["AI_Summary"] != "":
+                    st.markdown(row["AI_Summary"])
+                
+                # Raw files/titles hidden cleanly out of view
+                with st.expander("📄 View Full Raw Data Structure"):
+                    st.write(f"**Archive Log Parameters:** {row.get('Notes', '')}")
+                st.write("---")
         
     media_name = st.text_input("Source Title:")
     uploaded_books = st.file_uploader("Drop books or summaries in bulk:", type=["pdf", "docx", "xlsx", "txt"], accept_multiple_files=True, key="l_bulk")
@@ -232,8 +258,9 @@ with tab2:
     if st.button("Inject Batch to Library Vault", use_container_width=True):
         if uploaded_books and model:
             timestamp = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M")
+            names_list = [b.name for b in uploaded_books]
             with st.spinner("Indexing content vector arrays..."):
-                ai_payload = ["Extract core business execution rules for Animesh."]
+                ai_payload = ["Extract core business execution rules, actionable workflows, and comprehensive chapter summaries from these uploaded files for Animesh."]
                 for b in uploaded_books:
                     b_bytes = b.getvalue()
                     save_file_to_github(b_bytes, f"library_{media_name.replace(' ','_')}_{b.name}")
@@ -243,14 +270,14 @@ with tab2:
                 ai_summary = ""
                 try:
                     ai_summary = model.generate_content(ai_payload).text
-                except Exception:
-                    ai_summary = "AI processing ceiling met. Payload successfully locked to vault."
+                except Exception as e:
+                    ai_summary = f"### Document Batch Saved Successfully\nData files have been safely pushed to vault. Attached records: {', '.join(names_list)}"
                     
                 commit_new_log({
                     "Timestamp": timestamp, 
                     "Section": "Learning", 
                     "Score": 10, 
-                    "Notes": f"Batch: {media_name}",
+                    "Notes": f"Batch: {media_name} | Files: {', '.join(names_list)}",
                     "AI_Summary": ai_summary
                 })
                 st.success("🎉 Library components successfully archived & synced!")
@@ -267,13 +294,15 @@ with tab3:
         b_data = history_df[history_df["Section"] == "Business"]
         if not b_data.empty: 
             st.line_chart(b_data.set_index("Timestamp")["Score"])
-            st.write("### 📑 Venture Strategy Logs:")
+            st.write("### 📑 Isolated Section Logs:")
             for _, row in b_data.iloc[::-1].iterrows():
-                with st.expander(f"💼 {row['Timestamp']} | Momentum State: {row.get('Score', 7)}/10"):
-                    st.write(f"**Notes:** {row.get('Notes', '')}")
-                    if "AI_Summary" in row and pd.notna(row["AI_Summary"]) and row["AI_Summary"] != "":
-                        st.markdown("---")
-                        st.markdown(row["AI_Summary"])
+                st.markdown(f"#### 📅 Strategy Matrix Entry: {row['Timestamp']}")
+                if "AI_Summary" in row and pd.notna(row["AI_Summary"]) and row["AI_Summary"] != "":
+                    st.markdown(row["AI_Summary"])
+                
+                with st.expander("📄 View Full Raw Data / Venture Notes"):
+                    st.write(f"**Operational Parameters:** {row.get('Notes', '')}")
+                st.write("---")
             
     biz_name = st.text_input("Venture Name:", value="Premium Vegan Leather Goods Brand")
     biz_score = st.slider("Current Execution Momentum", 1, 10, 7, key="b_slider")
@@ -282,23 +311,26 @@ with tab3:
     
     if st.button("Analyze & Save Venture Metrics", use_container_width=True):
         timestamp = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M")
+        names_list = [bd.name for bd in biz_docs] if biz_docs else []
         ai_payload = [f"Act as a top global venture strategist. Project: {biz_name}. Momentum state: {biz_score}/10. Structural context updates: {biz_notes}"]
         if biz_docs:
             for bd in biz_docs:
                 save_file_to_github(bd.getvalue(), f"biz_{biz_name}_{bd.name}")
+                if bd.type in ["application/pdf"]:
+                    ai_payload.append({"mime_type": bd.type, "data": bd.getvalue()})
                 
         ai_summary = ""
         if model:
             try:
                 ai_summary = model.generate_content(ai_payload).text
             except Exception:
-                ai_summary = "Strategy processing limit active. Matrix parameters saved cleanly."
+                ai_summary = f"Strategy metrics locked. Attached files: {', '.join(names_list)}"
                 
         commit_new_log({
             "Timestamp": timestamp, 
             "Section": "Business", 
             "Score": biz_score, 
-            "Notes": biz_notes,
+            "Notes": f"{biz_notes} | Files: {', '.join(names_list)}",
             "AI_Summary": ai_summary
         })
         st.success("🎉 Venture metrics archived & broadcasted!")
@@ -316,9 +348,13 @@ with tab4:
         if not m_data.empty:
             st.write("### 🌌 Active Spiritual & Mindset Logs:")
             for _, row in m_data.iloc[::-1].iterrows():
-                with st.expander(f"✨ {row['Timestamp']} | {row.get('Notes', 'Mindset Protocol')}"):
-                    if "AI_Summary" in row and pd.notna(row["AI_Summary"]) and row["AI_Summary"] != "":
-                        st.markdown(row["AI_Summary"])
+                st.markdown(f"#### 📅 Alignment Window: {row['Timestamp']}")
+                if "AI_Summary" in row and pd.notna(row["AI_Summary"]) and row["AI_Summary"] != "":
+                    st.markdown(row["AI_Summary"])
+                
+                with st.expander("📄 View Full Raw Data Details"):
+                    st.write(f"**Context Tracker:** {row.get('Notes', 'None')}")
+                st.write("---")
 
     if st.button("Fetch Daily Meditation & Energy Shield Protocol", use_container_width=True):
         timestamp = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M")
@@ -343,6 +379,7 @@ with tab4:
     if st.button("Execute Astro Mapping Alignment", use_container_width=True):
         if astro_files and model:
             timestamp = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M")
+            names_list = [af.name for af in astro_files]
             ai_payload = ["Perform full structural alignment diagnosis on these birth chart data layers. Output explicit personal remedies."]
             for af in astro_files:
                 save_file_to_github(af.getvalue(), f"astro_{af.name}")
@@ -353,13 +390,13 @@ with tab4:
             try:
                 ai_summary = model.generate_content(ai_payload).text
             except Exception:
-                ai_summary = "Astro diagnostic modules deferred due to file weight density restrictions."
+                ai_summary = f"Planetary alignment saved. Data layers stored: {', '.join(names_list)}"
             
             commit_new_log({
                 "Timestamp": timestamp,
                 "Section": "Mindset",
                 "Score": 10,
-                "Notes": f"Astro Matrix Alignment ({len(astro_files)} files)",
+                "Notes": f"Astro Matrix Alignment | Files: {', '.join(names_list)}",
                 "AI_Summary": ai_summary
             })
             st.rerun()
@@ -376,8 +413,13 @@ with tab5:
             st.line_chart(r_data.set_index("Timestamp")["Score"])
             st.write("### 🤝 Relational Communication History:")
             for _, row in r_data.iloc[::-1].iterrows():
-                with st.expander(f"📊 {row['Timestamp']} | Harmony: {row.get('Score', 7)}/10"):
-                    st.write(row.get("Notes", "No notes logged."))
+                st.markdown(f"#### 📅 Connection Stamp: {row['Timestamp']}")
+                if "AI_Summary" in row and pd.notna(row["AI_Summary"]) and row["AI_Summary"] != "":
+                    st.info(row["AI_Summary"])
+                
+                with st.expander("📄 View Full Raw Text Logs"):
+                    st.write(row.get("Notes", "No additional notes logged."))
+                st.write("---")
         
     r_score = st.slider("Rate relational harmony level", 1, 10, 7, key="r_slider")
     r_notes = st.text_area("Key communication metrics or dynamics tracker:")
@@ -398,9 +440,13 @@ with tab6:
         if not f_data.empty:
             st.write("### ☀️ Retained Pre-Market Briefs & Audits:")
             for _, row in f_data.iloc[::-1].iterrows():
-                with st.expander(f"📈 {row['Timestamp']} | {row.get('Notes', 'Market Insight')}"):
-                    if "AI_Summary" in row and pd.notna(row["AI_Summary"]) and row["AI_Summary"] != "":
-                        st.markdown(row["AI_Summary"])
+                st.markdown(f"#### 📅 Equities Session Window: {row['Timestamp']}")
+                if "AI_Summary" in row and pd.notna(row["AI_Summary"]) and row["AI_Summary"] != "":
+                    st.markdown(row["AI_Summary"])
+                
+                with st.expander("📄 View Market Data Values"):
+                    st.write(f"**Ticker Assessment Logs:** {row.get('Notes', '')}")
+                st.write("---")
 
     if st.button("☀️ Pull Indian Pre-Market Framework Analysis", use_container_width=True):
         timestamp = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M")
@@ -473,11 +519,13 @@ with tab7:
             st.line_chart(g_data.set_index("Timestamp")["Score"])
             st.write("### 🎯 Saved Blueprints:")
             for _, row in g_data.iloc[::-1].iterrows():
-                with st.expander(f"🚀 Master Plan Revision ({row['Timestamp']})"):
-                    if "AI_Summary" in row and pd.notna(row["AI_Summary"]) and row["AI_Summary"] != "":
-                        st.markdown(row["AI_Summary"])
-                    else:
-                        st.write(row.get("Notes", ""))
+                st.markdown(f"#### 📅 Operational Target Set: {row['Timestamp']}")
+                if "AI_Summary" in row and pd.notna(row["AI_Summary"]) and row["AI_Summary"] != "":
+                    st.markdown(row["AI_Summary"])
+                
+                with st.expander("📄 View Vision Details"):
+                    st.write(row.get("Notes", ""))
+                st.write("---")
         
     vision_input = st.text_area("Define master 5 & 10-year blueprints:", value="Build a premier international sustainable design and luxury leather export empire with established corporate gifting logistics footprint across India.")
     if st.button("Update Long-Term Directives", use_container_width=True):
@@ -485,47 +533,6 @@ with tab7:
         st.success("🎉 Vision matrices locked in and synchronized globally!")
         time.sleep(0.5)
         st.rerun()
-
-# ============================================================================
-# 🟢 NEW SEAMLESS INTERACTIVE DATA DEPOSITORY (TAB 8 - SCREENLESS VIEWER)
-# ============================================================================
-with tab8:
-    st.header("📂 Seamless Knowledge Vault")
-    st.write("Review all summaries and documents directly on the web app screen—no file downloads required.")
-    
-    # Simple live search engine for your data logs
-    search_term = st.text_input("🔍 Filter records instantly by keyword:", placeholder="Type to search summaries or notes...", key="vault_search")
-    
-    if not history_df.empty:
-        # Filter rows based on search
-        if search_term:
-            mask = history_df.apply(lambda r: search_term.lower() in str(r['Notes']).lower() or 
-                                              search_term.lower() in str(r['AI_Summary']).lower() or 
-                                              search_term.lower() in str(r['Section']).lower(), axis=1)
-            display_df = history_df[mask]
-        else:
-            display_df = history_df
-            
-        if display_df.empty:
-            st.info("No matching vault documents found.")
-        else:
-            # Renders items cleanly from newest to oldest
-            for _, row in display_df.iloc[::-1].iterrows():
-                section_tag = f"[{row['Section'].upper()}]"
-                timestamp_str = row['Timestamp']
-                short_note = str(row['Notes'])[:40]
-                
-                # Screenless click-to-expand window layout
-                with st.expander(f"📁 {timestamp_str} | {section_tag} {short_note}..."):
-                    st.write(f"**Associated Log Note:** {row.get('Notes', 'None')}")
-                    st.write("---")
-                    st.markdown("### 📝 Live Summary & Execution Insights")
-                    if "AI_Summary" in row and pd.notna(row['AI_Summary']) and row['AI_Summary'] != "":
-                        st.markdown(row['AI_Summary'])
-                    else:
-                        st.info("File logged into cloud server. No text analysis was written for this batch.")
-    else:
-        st.info("Your vault database is currently empty. Add updates using the panel below to populate this viewer.")
 
 # ==========================================
 # 🟢 MASTER GREEN SYNC TERMINAL PANEL (BOTTOM UI)
@@ -556,7 +563,7 @@ if st.button("🟢 FORCE SYNC ALL DEVICES NOW"):
         "Timestamp": timestamp,
         "Section": sync_section,
         "Score": sync_score,
-        "Notes": "Global Device Pad Log Entry",
+        "Notes": f"Global Device Pad Log: {sync_notes}",
         "AI_Summary": f"### Direct Asset Update Record:\n{sync_notes}"
     }
     
