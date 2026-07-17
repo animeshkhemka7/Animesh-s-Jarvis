@@ -1,10 +1,11 @@
-Timestamp,Section,Score,Notes
-2026-07-17 12:15,Learning,10,Batch uploaded sources under tag: 
-2026-07-17 12:21,Learning,10,Batch uploaded sources under tag: 
-2026-07-17 12:26,Learning,10,Batch uploaded sources under tag: 
-2026-07-17 12:28,Learning,10,Batch uploaded sources under tag: 
-2026-07-17 13:03,Learning,10,Batch uploaded sources under tag: 
-2026-07-17 13:09,Learning,10,Batch uploaded sources under tag: Book
-2026-07-17 13:17,Learning,10,Batch: Books
-2026-07-17 13:18,Learning,10,Batch: Books
-2026-07-17 13:26,Learning,10,Batch: Books
+Timestamp,Section,Score,Notes,AI_Summary
+2026-07-17 12:15,Learning,10,Batch uploaded sources under tag: ,
+2026-07-17 12:21,Learning,10,Batch uploaded sources under tag: ,
+2026-07-17 12:26,Learning,10,Batch uploaded sources under tag: ,
+2026-07-17 12:28,Learning,10,Batch uploaded sources under tag: ,
+2026-07-17 13:03,Learning,10,Batch uploaded sources under tag: ,
+2026-07-17 13:09,Learning,10,Batch uploaded sources under tag: Book,
+2026-07-17 13:17,Learning,10,Batch: Books,
+2026-07-17 13:18,Learning,10,Batch: Books,
+2026-07-17 13:26,Learning,10,Batch: Books,
+2026-07-17 14:33,Learning,10,Batch: Books,AI processing ceiling met. Payload successfully locked to vault.
