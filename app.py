@@ -6,10 +6,10 @@ import requests
 import base64
 from io import BytesIO
 
-# 1. Page Configuration for Mobile & Laptop Layouts
+# 1. Page Configuration for Dual-Device Real-Time Sync
 st.set_page_config(page_title="Khemka Life OS", page_icon="🎯", layout="centered", initial_sidebar_state="collapsed")
 
-# Custom Responsive UI CSS
+# Premium Mobile Theme Stylesheet
 st.markdown("""
     <style>
         #MainMenu {visibility: hidden;} footer {visibility: hidden;} header {visibility: hidden;}
@@ -20,79 +20,79 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Secure Credentials Loading
+# Secure Key Pulls
 TOKEN = st.secrets.get("GITHUB_TOKEN", "")
 REPO = st.secrets.get("GITHUB_REPO", "")
 API_KEY = st.secrets.get("GEMINI_API_KEY", "")
 
 if API_KEY:
     genai.configure(api_key=API_KEY)
-    # Using the updated flagship free tier model
     model = genai.GenerativeModel('gemini-3.5-flash')
 else:
-    st.error("⚠️ Gemini API Key missing in Settings -> Secrets.")
+    st.error("⚠️ Gemini API Key missing in Secrets.")
     model = None
 
 # ==========================================
-# MULTI-FILE STORAGE UTILITY DRAWER
+# BACKEND CORE PIPELINES
 # ==========================================
 def save_file_to_github(file_bytes, filename, folder="vault"):
-    """Permanently writes binary files to your GitHub storage account"""
-    if not TOKEN or not REPO:
-        return False
+    if not TOKEN or not REPO: return False
     path = f"{folder}/{filename}"
     url = f"https://api.github.com/repos/{REPO}/contents/{path}"
     headers = {"Authorization": f"token {TOKEN}", "Accept": "application/vnd.github.v3+json"}
-    
     res = requests.get(url, headers=headers)
     sha = res.json().get("sha") if res.status_code == 200 else None
-    
     encoded_content = base64.b64encode(file_bytes).decode("utf-8")
-    payload = {"message": f"Storage Sync: Archived {filename}", "content": encoded_content}
-    if sha:
-        payload["sha"] = sha
-        
-    response = requests.put(url, headers=headers, json=payload)
-    return response.status_code in [200, 201]
+    payload = {"message": f"Sync: {filename}", "content": encoded_content}
+    if sha: payload["sha"] = sha
+    return requests.put(url, headers=headers, json=payload).status_code in [200, 201]
 
 def log_row_to_csv(row_dict, filename="logs.csv"):
-    """Appends running daily dashboard metrics to your master log database"""
-    if not TOKEN or not REPO:
-        return
+    if not TOKEN or not REPO: return
     url = f"https://api.github.com/repos/{REPO}/contents/{filename}"
     headers = {"Authorization": f"token {TOKEN}", "Accept": "application/vnd.github.v3+json"}
-    
     res = requests.get(url, headers=headers)
     existing_content = ""
     sha = None
-    
     if res.status_code == 200:
         sha = res.json().get("sha")
         existing_content = base64.b64decode(res.json().get("content")).decode("utf-8")
         df = pd.read_csv(BytesIO(existing_content.encode("utf-8")))
     else:
         df = pd.DataFrame(columns=["Timestamp", "Section", "Score", "Notes"])
-        
     df = pd.concat([df, pd.DataFrame([row_dict])], ignore_index=True)
-    csv_buffer = df.to_csv(index=False)
-    encoded_content = base64.b64encode(csv_buffer.encode("utf-8")).decode("utf-8")
-    
-    payload = {"message": "Database Sync: Appended Life Log", "content": encoded_content}
-    if sha:
-        payload["sha"] = sha
+    payload = {"message": "Database Append", "content": base64.b64encode(df.to_csv(index=False).encode("utf-8")).decode("utf-8")}
+    if sha: payload["sha"] = sha
     requests.put(url, headers=headers, json=payload)
 
-# Load database dataframe instantly upon startup
-if TOKEN and REPO:
+def load_history_raw():
+    if not TOKEN or not REPO: return pd.DataFrame()
     url = f"https://api.github.com/repos/{REPO}/contents/logs.csv"
     res = requests.get(url, headers={"Authorization": f"token {TOKEN}"})
-    history_df = pd.read_csv(BytesIO(base64.b64decode(res.json().get("content")).decode("utf-8").encode("utf-8"))) if res.status_code == 200 else pd.DataFrame()
-else:
-    history_df = pd.DataFrame()
+    if res.status_code == 200:
+        return pd.read_csv(BytesIO(base64.b64decode(res.json().get("content")).decode("utf-8").encode("utf-8")))
+    return pd.DataFrame()
 
-# Layout Initialization
+# ==========================================
+# 🔄 REAL-TIME CROSS-DEVICE SYNC ENGINE
+# ==========================================
+# This native fragment runs independently every 10 seconds to auto-refresh metrics
+@st.fragment(run_every="10s")
+def render_realtime_charts(section_name, chart_type="line"):
+    """Quietly polls the database and updates phone visualization in near real-time"""
+    current_df = load_history_raw()
+    if not current_df.empty:
+        filtered_df = current_df[current_df["Section"] == section_name]
+        if not filtered_df.empty:
+            if chart_type == "line":
+                st.caption(f"🔄 Real-Time Updated {section_name} Chart (Synced)")
+                st.line_chart(filtered_df.set_index("Timestamp")["Score"])
+            elif chart_type == "metric":
+                st.metric(label="Total Library Assets Stacked", value=len(filtered_df))
+
+# Master Interface Layout
 st.title("🎯 Khemka Life OS")
-st.caption("Batch Upload Mode Active | Animesh Khemka")
+st.caption("Real-Time Multi-Device Synchronization Enabled")
 st.write("---")
 
 tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
@@ -100,133 +100,121 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
 ])
 
 # ==========================================
-# 1. HEALTH & FITNESS (Batch Upload Enabled)
+# 1. HEALTH & FITNESS
 # ==========================================
 with tab1:
     st.header("💪 Health & Fitness Vault")
-    if not history_df.empty:
-        h_data = history_df[history_df["Section"] == "Health"]
-        if not h_data.empty: st.line_chart(h_data.set_index("Timestamp")["Score"])
+    
+    # Live Synchronized Chart Drawer
+    render_realtime_charts("Health", chart_type="line")
 
-    h_score = st.slider("Rate physical health score today", 1, 10, 7)
+    h_score = st.slider("Rate physical health score today", 1, 10, 7, key="health_slider_widget")
     h_input = st.text_area("Type lifestyle or workout notes:", key="h_notes")
     audio_log = st.audio_input("🎤 Tap to record voice entry", key="h_audio")
-    
-    # Notice: accept_multiple_files=True allows selecting multiple items at once
-    uploaded_files = st.file_uploader("Upload medical files/device screenshots (Select Multiple):", type=["pdf", "png", "jpg", "xlsx", "docx"], accept_multiple_files=True, key="h_bulk")
+    uploaded_files = st.file_uploader("Upload medical files/screenshots:", type=["pdf", "png", "jpg", "xlsx", "docx"], accept_multiple_files=True, key="h_bulk")
     
     if st.button("Permanently Process & Save Health Data", use_container_width=True):
         timestamp = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M")
         names_list = []
-        ai_payload = [f"Act as Animesh's health coach. Today's score: {h_score}/10. User Log: {h_input}"]
+        ai_payload = [f"Act as Animesh's health coach. Score: {h_score}/10. Log: {h_input}"]
         
         if audio_log:
             save_file_to_github(audio_log.getvalue(), f"voice_{timestamp.replace(' ','_')}.wav", folder="vault/voice")
             ai_payload.append(audio_log)
-            
         if uploaded_files:
             for f in uploaded_files:
                 f_bytes = f.getvalue()
                 save_file_to_github(f_bytes, f"health_{timestamp.replace(' ','_')}_{f.name}")
                 names_list.append(f.name)
-                # Pass readable image/pdf structures inline to AI engine safely
                 if f.type in ["image/png", "image/jpeg", "application/pdf"]:
                     ai_payload.append({"mime_type": f.type, "data": f_bytes})
                     
-        log_row_to_csv({"Timestamp": timestamp, "Section": "Health", "Score": h_score, "Notes": f"{h_input} | Batch Saved: {', '.join(names_list)}"})
-        st.success(f"Successfully processed and archived {len(names_list)} files permanently!")
+        log_row_to_csv({"Timestamp": timestamp, "Section": "Health", "Score": h_score, "Notes": f"{h_input} | Batch: {', '.join(names_list)}"})
+        st.success("Synced to cloud array!")
         if model: st.info(model.generate_content(ai_payload).text)
 
 # ==========================================
-# 2. LEARNING & DEVELOPMENT (Bulk Library Uploader)
+# 2. LEARNING & DEVELOPMENT
 # ==========================================
 with tab2:
     st.header("📚 Master Knowledge Bank")
-    media_name = st.text_input("Source Identifier (Book/Podcast Group Tag):")
     
-    # Drag and drop 10-20 books or transcripts here at the same time
-    uploaded_books = st.file_uploader("Drop books, text notes, or summary spreadsheets in bulk:", type=["pdf", "docx", "xlsx", "txt"], accept_multiple_files=True, key="l_bulk")
+    # Live Total Count Tracker
+    render_realtime_charts("Learning", chart_type="metric")
+    
+    media_name = st.text_input("Source Title:")
+    uploaded_books = st.file_uploader("Drop books or transcripts in bulk:", type=["pdf", "docx", "xlsx", "txt"], accept_multiple_files=True, key="l_bulk")
     
     if st.button("Inject Batch to Permanent Library Vault", use_container_width=True):
         if uploaded_books and model:
             timestamp = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M")
-            with st.spinner(f"Archiving {len(uploaded_books)} resources to your system layers..."):
-                ai_payload = [f"Synthesize the master operational rules and direct takeaways from these batch materials for an entrepreneur named Animesh."]
-                
+            with st.spinner("Indexing content..."):
+                ai_payload = ["Extract core frameworks for Animesh."]
                 for b in uploaded_books:
                     b_bytes = b.getvalue()
                     save_file_to_github(b_bytes, f"library_{media_name.replace(' ','_')}_{b.name}")
                     if b.type in ["application/pdf", "text/plain"]:
                         ai_payload.append({"mime_type": b.type, "data": b_bytes})
-                        
-                log_row_to_csv({"Timestamp": timestamp, "Section": "Learning", "Score": 10, "Notes": f"Batch uploaded sources under tag: {media_name}"})
-                st.success(f"🚀 Saved all {len(uploaded_books)} items permanently to your GitHub library vault!")
+                log_row_to_csv({"Timestamp": timestamp, "Section": "Learning", "Score": 10, "Notes": f"Batch: {media_name}"})
+                st.success("Library components safely updated!")
                 st.write(model.generate_content(ai_payload).text)
-                
-    st.markdown("---")
-    if st.button("Generate Master 20-30 Rules Blueprint", use_container_width=True):
-        if model: st.success(model.generate_content("Review high-performance guidelines across business and life strategy. Output an exact numerical list of the top 25 execution rules Animesh Khemka must track daily.").text)
 
 # ==========================================
-# 3. WORK & BUSINESS (Bulk Docs Mode)
+# 3. WORK & BUSINESS
 # ==========================================
 with tab3:
     st.header("🏢 Venture Strategy Dashboard")
+    render_realtime_charts("Business", chart_type="line")
+            
     biz_name = st.text_input("Business Venture Name:")
-    biz_score = st.slider("Current Execution Momentum Indicator", 1, 10, 5)
-    biz_notes = st.text_area("Operational updates/challenges:")
-    biz_docs = st.file_uploader("Upload spreadsheets, invoices, or strategy PDFs in bulk:", type=["xlsx", "csv", "pdf", "docx"], accept_multiple_files=True, key="b_bulk")
+    biz_score = st.slider("Current Momentum", 1, 10, 5, key="biz_slider_widget")
+    biz_notes = st.text_area("Operational challenges:")
+    biz_docs = st.file_uploader("Upload business sheets in bulk:", type=["xlsx", "csv", "pdf", "docx"], accept_multiple_files=True, key="b_bulk")
     
     if st.button("Analyze & Update Business Directives", use_container_width=True):
         timestamp = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M")
-        ai_payload = [f"Act as a McKinsey advisor. Project: {biz_name}. State: {biz_score}/10. Input: {biz_notes}"]
-        
+        ai_payload = [f"Business Strategist. Project: {biz_name}. State: {biz_score}/10. Notes: {biz_notes}"]
         if biz_docs:
             for bd in biz_docs:
-                bd_bytes = bd.getvalue()
-                save_file_to_github(bd_bytes, f"biz_{biz_name}_{bd.name}")
-                if bd.type in ["application/pdf"]:
-                    ai_payload.append({"mime_type": bd.type, "data": bd_bytes})
-                    
-        log_row_to_csv({"Timestamp": timestamp, "Section": "Business", "Score": biz_score, "Notes": f"Venture {biz_name}: {biz_notes}"})
-        st.success("Business log and uploaded sheets updated securely.")
+                save_file_to_github(bd.getvalue(), f"biz_{biz_name}_{bd.name}")
+        log_row_to_csv({"Timestamp": timestamp, "Section": "Business", "Score": biz_score, "Notes": biz_notes})
+        st.success("Directives processed successfully.")
         if model: st.info(model.generate_content(ai_payload).text)
 
 # ==========================================
-# 4. PEACE & MINDSET (Astrology Engine)
+# 4. PEACE & MINDSET
 # ==========================================
 with tab4:
     st.header("🧘 Energy Protection & Cosmic Metrics")
     if st.button("Fetch Daily Manifestation & Focus Routine", use_container_width=True):
-        if model: st.info(model.generate_content("Provide an executive mindset conditioning prompt, deep breathing rhythm instructions, and specific behavioral strategies to maximize concentration and shield focus from negative family dynamics.").text)
+        if model: st.info(model.generate_content("Provide a morning focus routine for an entrepreneur to shield concentration from negative environments.").text)
             
     st.markdown("---")
     st.subheader("🌌 Natal Astrology Reading Vault")
-    astro_files = st.file_uploader("Drop birth charts or chart screenshots (Select Multiple):", type=["pdf", "png", "jpg"], accept_multiple_files=True, key="astro_bulk")
+    astro_files = st.file_uploader("Drop birth charts (Select Multiple):", type=["pdf", "png", "jpg"], accept_multiple_files=True, key="astro_bulk")
     if st.button("Process Astrological Profiles", use_container_width=True):
         if astro_files and model:
-            with st.spinner("Decoding cosmic vectors..."):
-                ai_payload = ["Exactivate astrological framework trends from these uploaded documents. Provide strict remedies."]
-                for af in astro_files:
-                    af_bytes = af.getvalue()
-                    save_file_to_github(af_bytes, f"astro_{af.name}")
-                    if af.type in ["image/png", "image/jpeg", "application/pdf"]:
-                        ai_payload.append({"mime_type": af.type, "data": af_bytes})
-                st.info(model.generate_content(ai_payload).text)
+            ai_payload = ["Analyze these structural chart layers and map core remedies."]
+            for af in astro_files:
+                save_file_to_github(af.getvalue(), f"astro_{af.name}")
+                if af.type in ["image/png", "image/jpeg", "application/pdf"]:
+                    ai_payload.append({"mime_type": af.type, "data": af_bytes})
+            st.info(model.generate_content(ai_payload).text)
 
 # ==========================================
-# 5. RELATIONSHIPS CRM
+# 5. RELATIONSHIPS
 # ==========================================
 with tab5:
     st.header("🤝 Network Alignment Logs")
-    r_score = st.slider("Rate relational harmony level", 1, 10, 7)
-    r_notes = st.text_area("Enter notes or key communication benchmarks:")
+    render_realtime_charts("Relationships", chart_type="line")
+    r_score = st.slider("Rate relational harmony level", 1, 10, 7, key="rel_slider_widget")
+    r_notes = st.text_area("Enter key milestones or communication notes:")
     if st.button("Archive Relationship Log Entry", use_container_width=True):
         log_row_to_csv({"Timestamp": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M"), "Section": "Relationships", "Score": r_score, "Notes": r_notes})
-        st.success("CRM transaction completed successfully.")
+        st.success("CRM updated.")
 
 # ==========================================
-# 6. INDIAN STOCK MARKET INFRASTRUCTURE
+# 6. INDIAN STOCK MARKET
 # ==========================================
 with tab6:
     st.header("📉 Market Engine Terminal")
@@ -234,36 +222,27 @@ with tab6:
         if model:
             try:
                 nifty_close = yf.Ticker("^NSEI").history(period="2d")['Close'].iloc[-1]
-                st.info(model.generate_content(f"Provide an assertive morning framework strategy briefing for an Indian market equity operator. Current indicator status: Nifty 50 close tracking near {nifty_close}. Pinpoint 3 high-probability alpha sectors.").text)
+                st.info(model.generate_content(f"Provide a morning index overview briefing. Nifty 50 close tracking near {nifty_close}. State 3 high-probability alpha stock sectors.").text)
             except Exception as e: st.error(f"Data pull issue: {e}")
                     
     st.markdown("---")
-    ticker = st.text_input("Enter NSE Stock Ticker (e.g. RELIANCE.NS, TCS.NS):", value="RELIANCE.NS")
+    ticker = st.text_input("Enter NSE Stock Ticker (e.g. RELIANCE.NS):", value="RELIANCE.NS")
     if st.button("Run Fundamental + Technical Market Audit", use_container_width=True):
         try:
             hist = yf.Ticker(ticker).history(period="6mo")
             if not hist.empty:
-                metrics = f"Price: ₹{hist['Close'].iloc[-1]:.2f} | 50-Day MA: ₹{hist['Close'].rolling(50).mean().iloc[-1]:.2f} | 200-Day MA: ₹{hist['Close'].rolling(200).mean().iloc[-1]:.2f}"
+                metrics = f"Price: ₹{hist['Close'].iloc[-1]:.2f} | 50-Day MA: ₹{hist['Close'].rolling(50).mean().iloc[-1]:.2f}"
                 st.text(metrics)
-                if model: st.write(model.generate_content(f"Act as a professional Indian market researcher. Evaluate these parameters for {ticker}: {metrics}. Provide clear entry targets and an explicit Buy/Hold/Sell recommendation.").text)
+                if model: st.write(model.generate_content(f"Technical audit for {ticker}: {metrics}. Provide clear entry parameters and a final Buy/Hold/Sell decision.").text)
         except Exception as err: st.error(f"Audit failed: {err}")
-
-    st.markdown("---")
-    st.subheader("📋 Master Portfolio Upload")
-    port_files = st.file_uploader("Drop portfolio spreadsheets or statements (Select Multiple):", type=["xlsx", "csv"], accept_multiple_files=True, key="port_bulk")
-    if st.button("Execute Portfolio Risk Scans", use_container_width=True):
-        if port_files and model:
-            ai_payload = ["Evaluate these portfolio positions for heavy concentration risks and structural exposures in Indian market conditions."]
-            for pf in port_files:
-                save_file_to_github(pf.getvalue(), f"portfolio_{pf.name}")
-            st.success("Portfolios synced. AI analysis generated successfully.")
 
 # ==========================================
 # 7. LONG-TERM GOALS
 # ==========================================
 with tab7:
     st.header("🚀 Macro Strategy Vectoring")
-    vision_input = st.text_area("Define core 5 & 10-year enterprise scale blueprints:")
+    render_realtime_charts("Goals", chart_type="line")
+    vision_input = st.text_area("Define core 5 & 10-year blueprints:")
     if st.button("Update Long-Term Directives", use_container_width=True):
         log_row_to_csv({"Timestamp": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M"), "Section": "Goals", "Score": 10, "Notes": vision_input})
-        st.success("Macro directives stored permanently in repository archives.")
+        st.success("Blueprints saved to system cloud array.")
