@@ -145,8 +145,9 @@ history_df = st.session_state["cached_db"]
 st.caption(f"Last Hard Synchronization Check: {datetime.now().strftime('%H:%M:%S')}")
 st.write("---")
 
-tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
-    "❤️ Health", "🧠 Learn", "💼 Biz", "🧘 Peace", "🤝 Rel", "📉 Finance", "🚀 Goals"
+# HERE IS THE NEW 8th TAB ADDED NATIVELY ("📂 Vault")
+tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
+    "❤️ Health", "🧠 Learn", "💼 Biz", "🧘 Peace", "🤝 Rel", "📉 Finance", "🚀 Goals", "📂 Vault"
 ])
 
 # ==========================================
@@ -484,6 +485,47 @@ with tab7:
         st.success("🎉 Vision matrices locked in and synchronized globally!")
         time.sleep(0.5)
         st.rerun()
+
+# ============================================================================
+# 🟢 NEW SEAMLESS INTERACTIVE DATA DEPOSITORY (TAB 8 - SCREENLESS VIEWER)
+# ============================================================================
+with tab8:
+    st.header("📂 Seamless Knowledge Vault")
+    st.write("Review all summaries and documents directly on the web app screen—no file downloads required.")
+    
+    # Simple live search engine for your data logs
+    search_term = st.text_input("🔍 Filter records instantly by keyword:", placeholder="Type to search summaries or notes...", key="vault_search")
+    
+    if not history_df.empty:
+        # Filter rows based on search
+        if search_term:
+            mask = history_df.apply(lambda r: search_term.lower() in str(r['Notes']).lower() or 
+                                              search_term.lower() in str(r['AI_Summary']).lower() or 
+                                              search_term.lower() in str(r['Section']).lower(), axis=1)
+            display_df = history_df[mask]
+        else:
+            display_df = history_df
+            
+        if display_df.empty:
+            st.info("No matching vault documents found.")
+        else:
+            # Renders items cleanly from newest to oldest
+            for _, row in display_df.iloc[::-1].iterrows():
+                section_tag = f"[{row['Section'].upper()}]"
+                timestamp_str = row['Timestamp']
+                short_note = str(row['Notes'])[:40]
+                
+                # Screenless click-to-expand window layout
+                with st.expander(f"📁 {timestamp_str} | {section_tag} {short_note}..."):
+                    st.write(f"**Associated Log Note:** {row.get('Notes', 'None')}")
+                    st.write("---")
+                    st.markdown("### 📝 Live Summary & Execution Insights")
+                    if "AI_Summary" in row and pd.notna(row['AI_Summary']) and row['AI_Summary'] != "":
+                        st.markdown(row['AI_Summary'])
+                    else:
+                        st.info("File logged into cloud server. No text analysis was written for this batch.")
+    else:
+        st.info("Your vault database is currently empty. Add updates using the panel below to populate this viewer.")
 
 # ==========================================
 # 🟢 MASTER GREEN SYNC TERMINAL PANEL (BOTTOM UI)
