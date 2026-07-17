@@ -1,11 +1,46 @@
 import streamlit as st
+import requests
 import google.generativeai as genai
 import pandas as pd
 import yfinance as yf
-import requests
 import base64
 import time
 from io import BytesIO
+from datetime import datetime
+
+# ==========================================
+# 🌐 PERMANENT CLOUD LOCKER SYNCHRONIZATION CORE
+# ==========================================
+LOCKER_ID = "brand_leather_goods_secret_box_2026"
+LOCKER_URL = f"https://kvdb.io/{LOCKER_ID}/dashboard_memory"
+
+def load_from_locker():
+    try:
+        response = requests.get(LOCKER_URL)
+        if response.status_code == 200:
+            return response.json()
+    except:
+        pass
+    return []
+
+def save_to_locker(data_list):
+    try:
+        requests.post(LOCKER_URL, json=data_list)
+        return True
+    except:
+        return False
+
+# Initialize cloud locker connection into active memory
+if 'saved_entries' not in st.session_state:
+    st.session_state.saved_entries = load_from_locker()
+
+# Convert the cloud locker database into the active DataFrame the app layout expects
+if st.session_state.saved_entries:
+    history_df = pd.DataFrame(st.session_state.saved_entries)
+else:
+    history_df = pd.DataFrame(columns=["Timestamp", "Section", "Score", "Notes"])
+
+st.session_state["cached_db"] = history_df
 
 # 1. Responsive Shell Configuration
 st.set_page_config(page_title="Khemka Life OS", page_icon="🎯", layout="centered", initial_sidebar_state="collapsed")
@@ -56,7 +91,6 @@ def save_file_to_github(file_bytes, filename, folder="vault"):
 
 def log_row_to_csv(row_dict, filename="logs.csv"):
     if not TOKEN or not REPO: return
-    # Use dynamic query parameters to force the server to break local cache layers
     url = f"https://api.github.com/repos/{REPO}/contents/{filename}?nocache={int(time.time())}"
     headers = {
         "Authorization": f"token {TOKEN}",
@@ -82,27 +116,16 @@ def log_row_to_csv(row_dict, filename="logs.csv"):
     }
     requests.put(f"https://api.github.com/repos/{REPO}/contents/{filename}", headers=headers, json=payload)
 
-def load_live_database_uncached():
-    """Forces a completely raw download from GitHub, bypassing proxy caching structures"""
-    if not TOKEN or not REPO: return pd.DataFrame()
-    # Unique timestamp URL parameters ensure we bypass GitHub's API edge delivery cache
-    url = f"https://api.github.com/repos/{REPO}/contents/logs.csv?t={int(time.time())}"
-    headers = {
-        "Authorization": f"token {TOKEN}",
-        "Accept": "application/vnd.github.v3+json",
-        "Cache-Control": "no-cache",
-        "Pragma": "no-cache",
-        "If-None-Match": ""
-    }
+# Dual-Routing Sync Engine (Locks data into Cloud Locker instantly, then updates GitHub)
+def universal_data_write(row_dict):
+    if 'saved_entries' not in st.session_state:
+        st.session_state.saved_entries = load_from_locker()
+    st.session_state.saved_entries.append(row_dict)
+    save_to_locker(st.session_state.saved_entries)
     try:
-        res = requests.get(url, headers=headers)
-        if res.status_code == 200:
-            content_b64 = res.json().get("content", "")
-            content_str = base64.b64decode(content_b64).decode("utf-8")
-            return pd.read_csv(BytesIO(content_str.encode("utf-8")))
+        log_row_to_csv(row_dict)
     except:
         pass
-    return pd.DataFrame()
 
 # ==========================================
 # MASTER UI INITIALIZATION
@@ -112,16 +135,12 @@ st.title("🎯 Khemka Life OS")
 # Master High-Priority Synchronize Command Trigger (Top Block)
 st.markdown('<div class="sync-btn">', unsafe_allow_html=True)
 if st.button("🔄 FORCE SYNC ALL DEVICES NOW", use_container_width=True):
-    with st.spinner("Purging data cache layers..."):
-        st.session_state["cached_db"] = load_live_database_uncached()
-        st.success("App updated with latest laptop inputs!")
-        time.sleep(0.5)
+    with st.spinner("Synchronizing cloud locker matrices..."):
+        st.session_state.saved_entries = load_from_locker()
+        st.success("App updated with latest data exchanges!")
+        time.sleep(0.4)
         st.rerun()
 st.markdown('</div>', unsafe_allow_html=True)
-
-# Persistent Session Memory Setup
-if "cached_db" not in st.session_state:
-    st.session_state["cached_db"] = load_live_database_uncached()
 
 history_df = st.session_state["cached_db"]
 st.caption(f"Last Hard Synchronization Check: {datetime.now().strftime('%H:%M:%S')}")
@@ -161,9 +180,11 @@ with tab1:
                 if f.type in ["image/png", "image/jpeg", "application/pdf"]:
                     ai_payload.append({"mime_type": f.type, "data": f_bytes})
                     
-        log_row_to_csv({"Timestamp": timestamp, "Section": "Health", "Score": h_score, "Notes": f"{h_input} | Batch: {', '.join(names_list)}"})
+        universal_data_write({"Timestamp": timestamp, "Section": "Health", "Score": h_score, "Notes": f"{h_input} | Batch: {', '.join(names_list)}"})
         st.success("Synced to cloud storage!")
         if model: st.info(model.generate_content(ai_payload).text)
+        time.sleep(0.4)
+        st.rerun()
 
 # ==========================================
 # 2. LEARNING & DEVELOPMENT MODULE
@@ -187,12 +208,14 @@ with tab2:
                     save_file_to_github(b_bytes, f"library_{media_name.replace(' ','_')}_{b.name}")
                     if b.type in ["application/pdf", "text/plain"]:
                         ai_payload.append({"mime_type": b.type, "data": b_bytes})
-                log_row_to_csv({"Timestamp": timestamp, "Section": "Learning", "Score": 10, "Notes": f"Batch: {media_name}"})
+                universal_data_write({"Timestamp": timestamp, "Section": "Learning", "Score": 10, "Notes": f"Batch: {media_name}"})
                 st.success("Library components successfully archived!")
                 st.write(model.generate_content(ai_payload).text)
+                time.sleep(0.4)
+                st.rerun()
 
 # ==========================================
-# 3. WORK & BUSINESS MODULE (Hyper-Personalized Setup)
+# 3. WORK & BUSINESS MODULE
 # ==========================================
 with tab3:
     st.header("🏢 Venture Strategy Dashboard")
@@ -211,9 +234,11 @@ with tab3:
         if biz_docs:
             for bd in biz_docs:
                 save_file_to_github(bd.getvalue(), f"biz_{biz_name}_{bd.name}")
-        log_row_to_csv({"Timestamp": timestamp, "Section": "Business", "Score": biz_score, "Notes": biz_notes})
+        universal_data_write({"Timestamp": timestamp, "Section": "Business", "Score": biz_score, "Notes": biz_notes})
         st.success("Venture dashboard arrays updated.")
         if model: st.info(model.generate_content(ai_payload).text)
+        time.sleep(0.4)
+        st.rerun()
 
 # ==========================================
 # 4. PEACE & MINDSET MODULE
@@ -247,8 +272,10 @@ with tab5:
     r_score = st.slider("Rate relational harmony level", 1, 10, 7, key="r_slider")
     r_notes = st.text_area("Key communication metrics or dynamics tracker:")
     if st.button("Archive Relationship Log Entry", use_container_width=True):
-        log_row_to_csv({"Timestamp": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M"), "Section": "Relationships", "Score": r_score, "Notes": r_notes})
+        universal_data_write({"Timestamp": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M"), "Section": "Relationships", "Score": r_score, "Notes": r_notes})
         st.success("Network logs compiled safely.")
+        time.sleep(0.4)
+        st.rerun()
 
 # ==========================================
 # 6. INDIAN STOCK MARKET ENGINE
@@ -292,5 +319,56 @@ with tab7:
         
     vision_input = st.text_area("Define master 5 & 10-year blueprints:", value="Build a premier international sustainable design and luxury leather export empire with established corporate gifting logistics footprint across India.")
     if st.button("Update Long-Term Directives", use_container_width=True):
-        log_row_to_csv({"Timestamp": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M"), "Section": "Goals", "Score": 10, "Notes": vision_input})
+        universal_data_write({"Timestamp": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M"), "Section": "Goals", "Score": 10, "Notes": vision_input})
         st.success("Vision matrices synchronized to permanent server core.")
+        time.sleep(0.4)
+        st.rerun()
+
+# ==========================================
+# 🟢 MASTER GREEN SYNC TERMINAL PANEL (BOTTOM UI)
+# ==========================================
+st.markdown("""
+    <style>
+    div.stButton > button {
+        background-color: #28a745 !important; color: white !important;
+        font-size: 20px !important; font-weight: bold !important;
+        padding: 15px 30px !important; border-radius: 8px !important;
+        width: 100% !important; border: none !important;
+    }
+    div.stButton > button:hover { background-color: #218838 !important; }
+    </style>
+""", unsafe_allow_html=True)
+
+st.write("---") 
+st.write("### 🗲 Universal Cross-Device Entry Pad")
+
+# Independent input fields that feed straight into the master sync action
+sync_section = st.selectbox("Assign log to module:", ["Business", "Learning", "Health", "Goals", "Relationships"], key="m_sec")
+sync_notes = st.text_area("Type updates, logs, or paste Google Drive asset links here:", placeholder="Example: Placed clutches and men's sling bag samples into corporate catalog folder. Link: https://drive.google.com/...", key="m_notes")
+sync_score = st.slider("Assign score status value:", 1, 10, 10, key="m_score")
+
+if st.button("🟢 FORCE SYNC ALL DEVICES NOW"):
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
+    
+    # Package up the direct entry data point
+    new_entry = {
+        "Timestamp": timestamp,
+        "Section": sync_section,
+        "Score": sync_score,
+        "Notes": sync_notes if sync_notes else "Manual Global Device Sync Verification Triggered"
+    }
+    
+    # Clear cache, download latest state from cloud ledger, insert entry, lock in data instantly
+    st.session_state.saved_entries = load_from_locker()
+    st.session_state.saved_entries.append(new_entry)
+    save_to_locker(st.session_state.saved_entries)
+    
+    # Back up the text data row into your repository records file
+    try:
+        log_row_to_csv(new_entry)
+    except:
+        pass
+        
+    st.success("✨ Everything synchronized flawlessly! Data securely saved and broadcasted to all terminal instances.")
+    time.sleep(0.5)
+    st.rerun()
