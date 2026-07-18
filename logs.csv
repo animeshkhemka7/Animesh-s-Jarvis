@@ -6400,7 +6400,15 @@ Memorable Quotes
 ""Believe it can be done. When you believe something can be done, your mind will find the ways to do it.""
 ""Action cures fear.""
 "
-2026-07-18 03:46,Learning,10,📄 Arthashastra.docx | Batch: ,❌ AI Processing Engine Connection Timeout. Text content is safely preserved in the database card tray below.,"Key Takeaways from 
+2026-07-18 03:46,Learning,10,📄 Arthashastra.docx | Batch: ,"❌ All endpoints rejected the request. Diagnostic Log Logs:
+[v1beta/gemini-1.5-pro]: HTTP 404 - {
+  ""error"": {
+    ""code"": 404,
+    ""message"": ""models/gemini-1.5-pro is not found for API version v1beta, or is not sup
+[v1beta/gemini-pro]: HTTP 404 - {
+  ""error"": {
+    ""code"": 404,
+    ""message"": ""models/gemini-pro is not found for API version v1beta, or is not support","Key Takeaways from 
 Arthashastra
  by Chanakya (Kautilya)
 Arthashastra
@@ -6792,7 +6800,15 @@ Systems before trust
 Information before action
 Survival before growth
 Discipline before expansion"
-2026-07-18 03:46,Learning,10,📄 Chanakya's Chant.docx | Batch: ,❌ AI Processing Engine Connection Timeout. Text content is safely preserved in the database card tray below.,"Core Lessons from the Book
+2026-07-18 03:46,Learning,10,📄 Chanakya's Chant.docx | Batch: ,"❌ All endpoints rejected the request. Diagnostic Log Logs:
+[v1beta/gemini-1.5-pro]: HTTP 404 - {
+  ""error"": {
+    ""code"": 404,
+    ""message"": ""models/gemini-1.5-pro is not found for API version v1beta, or is not sup
+[v1beta/gemini-pro]: HTTP 404 - {
+  ""error"": {
+    ""code"": 404,
+    ""message"": ""models/gemini-pro is not found for API version v1beta, or is not support","Core Lessons from the Book
  Chanakya’s Chant by Ashwin Sanghi
 1. Strategy Beats Raw Strength
 Many stronger kings lost because Chanakya was:
@@ -6997,7 +7013,15 @@ Your biggest growth opportunity is
 becoming emotionally harder while remaining ethically grounded.
  
 That combination becomes extremely powerful."
-2026-07-18 03:46,Learning,10,📄 Gita.docx | Batch: ,❌ AI Processing Engine Connection Timeout. Text content is safely preserved in the database card tray below.,"Complete Life Wisdom & Gita-Inspired Teachings
+2026-07-18 03:46,Learning,10,📄 Gita.docx | Batch: ,"❌ All endpoints rejected the request. Diagnostic Log Logs:
+[v1beta/gemini-1.5-pro]: HTTP 404 - {
+  ""error"": {
+    ""code"": 404,
+    ""message"": ""models/gemini-1.5-pro is not found for API version v1beta, or is not sup
+[v1beta/gemini-pro]: HTTP 404 - {
+  ""error"": {
+    ""code"": 404,
+    ""message"": ""models/gemini-pro is not found for API version v1beta, or is not support","Complete Life Wisdom & Gita-Inspired Teachings
 If you want to remain happy in life, make decisions by looking at 
 your own circumstances
 , not by looking at the world.
@@ -7293,7 +7317,15 @@ Goodwill over jealousy.
 When the mind rests from noise, it heals itself.
 Final Essence
 Karma, character, patience, faith, and self-mastery — this is the true Gita of life."
-2026-07-18 03:46,Learning,10,📄 Give & Take - Adam Grant.docx | Batch: ,❌ AI Processing Engine Connection Timeout. Text content is safely preserved in the database card tray below.,"Key Takeaways from 
+2026-07-18 03:46,Learning,10,📄 Give & Take - Adam Grant.docx | Batch: ,"❌ All endpoints rejected the request. Diagnostic Log Logs:
+[v1beta/gemini-1.5-pro]: HTTP 404 - {
+  ""error"": {
+    ""code"": 404,
+    ""message"": ""models/gemini-1.5-pro is not found for API version v1beta, or is not sup
+[v1beta/gemini-pro]: HTTP 404 - {
+  ""error"": {
+    ""code"": 404,
+    ""message"": ""models/gemini-pro is not found for API version v1beta, or is not support","Key Takeaways from 
 Give and Take
  by Adam Grant
 The Core Idea
@@ -7406,7 +7438,15 @@ Result:
 One-Line Summary
 : 
 The most powerful professionals aren’t takers—they’re disciplined givers who create value for everyone around them."
-2026-07-18 03:46,Learning,10,📄 Lessons from Books - Summarised.docx | Batch: ,❌ AI Processing Engine Connection Timeout. Text content is safely preserved in the database card tray below.,"Lessons for Self Development / Individual Related
+2026-07-18 03:46,Learning,10,📄 Lessons from Books - Summarised.docx | Batch: ,"❌ All endpoints rejected the request. Diagnostic Log Logs:
+[v1beta/gemini-1.5-pro]: HTTP 404 - {
+  ""error"": {
+    ""code"": 404,
+    ""message"": ""models/gemini-1.5-pro is not found for API version v1beta, or is not sup
+[v1beta/gemini-pro]: HTTP 404 - {
+  ""error"": {
+    ""code"": 404,
+    ""message"": ""models/gemini-pro is not found for API version v1beta, or is not support","Lessons for Self Development / Individual Related
  
 / Relationships
 We are the sum total of the books we read, the people we surround our self with 
@@ -7773,7 +7813,15 @@ Information is power. The more you know about the other party's needs, interests
 Patience is a virtue in negotiation. Resist the urge to rush to a resolution. Allowing time for discussion and consideration often leads to better outcomes
 Learn to say ""no"" effectively. A well-placed ""no"" can be a powerful tool. Be firm but polite, and explain your reasoning
 Be prepared to walk away. Knowing your limits and being willing to end negotiations if your needs aren't met is crucial"
-2026-07-18 03:46,Learning,10,📄 Lessons from Books.docx | Batch: ,❌ AI Processing Engine Connection Timeout. Text content is safely preserved in the database card tray below.,"Lessons from Books
+2026-07-18 03:46,Learning,10,📄 Lessons from Books.docx | Batch: ,"❌ All endpoints rejected the request. Diagnostic Log Logs:
+[v1beta/gemini-1.5-pro]: HTTP 404 - {
+  ""error"": {
+    ""code"": 404,
+    ""message"": ""models/gemini-1.5-pro is not found for API version v1beta, or is not sup
+[v1beta/gemini-pro]: HTTP 404 - {
+  ""error"": {
+    ""code"": 404,
+    ""message"": ""models/gemini-pro is not found for API version v1beta, or is not support","Lessons from Books
 T
 he Gita
 There is no greater wealth than peace of mind
@@ -8716,7 +8764,15 @@ Behavior
 nough” + 
 Respecting
  compounding"
-2026-07-18 03:46,Learning,10,📄 Mahabharat For Me.docx | Batch: ,❌ AI Processing Engine Connection Timeout. Text content is safely preserved in the database card tray below.,"The Mahabharata is not just a story about war.
+2026-07-18 03:46,Learning,10,📄 Mahabharat For Me.docx | Batch: ,"❌ All endpoints rejected the request. Diagnostic Log Logs:
+[v1beta/gemini-1.5-pro]: HTTP 404 - {
+  ""error"": {
+    ""code"": 404,
+    ""message"": ""models/gemini-1.5-pro is not found for API version v1beta, or is not sup
+[v1beta/gemini-pro]: HTTP 404 - {
+  ""error"": {
+    ""code"": 404,
+    ""message"": ""models/gemini-pro is not found for API version v1beta, or is not support","The Mahabharata is not just a story about war.
  
 It is one of the deepest studies ever written on:
 family conflict
@@ -9021,7 +9077,15 @@ Dharma is rarely black and white.
 Inner clarity matters more than outer noise.
 And perhaps the deepest lesson for you specifically:
 “Do not let conflict consume the part of you that is meant to build.”"
-2026-07-18 03:46,Learning,10,📄 Modern Wisdom Ancient Roots.docx | Batch: ,❌ AI Processing Engine Connection Timeout. Text content is safely preserved in the database card tray below.,"The talk/interview 
+2026-07-18 03:46,Learning,10,📄 Modern Wisdom Ancient Roots.docx | Batch: ,"❌ All endpoints rejected the request. Diagnostic Log Logs:
+[v1beta/gemini-1.5-pro]: HTTP 404 - {
+  ""error"": {
+    ""code"": 404,
+    ""message"": ""models/gemini-1.5-pro is not found for API version v1beta, or is not sup
+[v1beta/gemini-pro]: HTTP 404 - {
+  ""error"": {
+    ""code"": 404,
+    ""message"": ""models/gemini-pro is not found for API version v1beta, or is not support","The talk/interview 
 “Modern Wisdom, Ancient Roots” by Srikumar Rao
  is fundamentally about one profound idea:
 Outer success without inner stability eventually creates suffering.
@@ -9277,7 +9341,15 @@ long-term consistency
 THE ONE SENTENCE TO REMEMBER
 “Build externally with ambition, but live internally with detachment.”
 That is the real essence of Srikumar Rao’s philosophy."
-2026-07-18 03:46,Learning,10,📄 The Magic of Thinking Big.docx | Batch: ,❌ AI Processing Engine Connection Timeout. Text content is safely preserved in the database card tray below.,"Key Takeaways from 
+2026-07-18 03:46,Learning,10,📄 The Magic of Thinking Big.docx | Batch: ,"❌ All endpoints rejected the request. Diagnostic Log Logs:
+[v1beta/gemini-1.5-pro]: HTTP 404 - {
+  ""error"": {
+    ""code"": 404,
+    ""message"": ""models/gemini-1.5-pro is not found for API version v1beta, or is not sup
+[v1beta/gemini-pro]: HTTP 404 - {
+  ""error"": {
+    ""code"": 404,
+    ""message"": ""models/gemini-pro is not found for API version v1beta, or is not support","Key Takeaways from 
 The Magic of Thinking Big
  - 
 By David J. Schwartz
