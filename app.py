@@ -35,21 +35,21 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Secure Environment Infrastructure Pips
-TOKEN = st.secrets.get("GITHUB_TOKEN", "")
-REPO = st.secrets.get("GITHUB_REPO", "")
-API_KEY = st.secrets.get("GEMINI_API_KEY", "")
+# Secure Environment Infrastructure Pips (With whitespace stripping defense)
+TOKEN = st.secrets.get("GITHUB_TOKEN", "").strip()
+REPO = st.secrets.get("GITHUB_REPO", "").strip()
+API_KEY = st.secrets.get("GEMINI_API_KEY", "").strip()
 
 # ==========================================
-# ⚡ SELF-CORRECTING MATRIX REST AI ENGINE
+# ⚡ UNMASKED SELF-CORRECTING REST AI ENGINE
 # ==========================================
 def call_gemini_engine(prompt_text):
     if not API_KEY:
         return "⚠️ Gemini API Key missing in Settings -> Secrets."
     
-    # Scanning matrix systematically tests every version and model combination to bypass 404 errors entirely
+    # Comprehensive scanning matrix to find your environment's exact supported endpoint configuration
     versions = ['v1', 'v1beta']
-    models_to_scan = ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-2.0-flash', 'gemini-pro']
+    models_to_scan = ['gemini-1.5-flash', 'gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-pro', 'gemini-pro']
     
     headers = {"Content-Type": "application/json"}
     payload = {
@@ -58,18 +58,22 @@ def call_gemini_engine(prompt_text):
         }]
     }
     
+    debug_logs = []
     for version in versions:
         for model_name in models_to_scan:
             url = f"https://generativelanguage.googleapis.com/{version}/models/{model_name}:generateContent?key={API_KEY}"
             try:
-                response = requests.post(url, headers=headers, json=payload, timeout=15)
+                response = requests.post(url, headers=headers, json=payload, timeout=12)
                 if response.status_code == 200:
                     res_json = response.json()
                     return res_json['candidates'][0]['content']['parts'][0]['text']
-            except Exception:
+                else:
+                    debug_logs.append(f"[{version}/{model_name}]: HTTP {response.status_code} - {response.text[:120]}")
+            except Exception as e:
+                debug_logs.append(f"[{version}/{model_name}]: Exception - {str(e)[:120]}")
                 continue
                 
-    return "❌ AI Processing Engine Connection Timeout. Text content is safely preserved in the database card tray below."
+    return f"❌ All endpoints rejected the request. Diagnostic Log Logs:\n" + "\n".join(debug_logs[-2:])
 
 # ==========================================
 # ⚡ NATIVE LOCAL FILE TEXT EXTRACTOR
@@ -267,10 +271,10 @@ with tab1:
                 st.caption(f"Logged at: {timestamp_str}")
                 
                 if is_corrupted:
-                    st.warning("📋 Summary data row uncompiled. Click below to generate active text summary rules.")
-                    if raw_text.strip() != "" and not any(err in raw_text.lower() for err in ["unable to compile", "connection refused", "engine error"]):
+                    st.warning("📋 Summary uncompiled due to historical error text blocks.")
+                    if raw_text.strip() != "" and not any(err in raw_text.lower() for err in ["unable to compile", "connection refused", "engine error", "rejected the request"]):
                         if st.button("✨ Generate Missing 8-10 Line Summary Now", key=f"repair_h_{timestamp_str}_{idx}"):
-                            with st.spinner("Extracting metrics directly from raw database rows..."):
+                            with st.spinner("Extracting content metrics directly from raw data layer..."):
                                 repair_prompt = f"Provide a clean, comprehensive 8-to-10 line deep-dive content summary detailing the exact key findings and what this health document states. Focus on vital data, tracking metrics, and recommendations. Your entire output response must be strictly between 8 and 10 lines long:\n\n{raw_text[:20000]}"
                                 resolved_summary = call_gemini_engine(repair_prompt)
                                 st.session_state["cached_db"].loc[(st.session_state["cached_db"]["Timestamp"] == timestamp_str) & (st.session_state["cached_db"]["Section"] == "Health"), "AI_Summary"] = resolved_summary
@@ -281,7 +285,7 @@ with tab1:
                 else:
                     st.markdown(ai_sum)
                     
-                if raw_text.strip() != "" and not any(err in raw_text.lower() for err in ["unable to compile", "connection refused", "engine error"]):
+                if raw_text.strip() != "" and not any(err in raw_text.lower() for err in ["unable to compile", "connection refused", "engine error", "rejected the request"]):
                     with st.expander("📂 Click to view original raw file text"):
                         st.text_area("Original Content Stream", value=raw_text, height=200, disabled=True, key=f"raw_h_{timestamp_str}_{idx}")
                 st.markdown('</div>', unsafe_allow_html=True)
@@ -337,7 +341,7 @@ with tab2:
         # 🎯 STABLE 20-30 LINE MASTER RULES ENGINE
         st.markdown("### ⚡ Master Life Implementation Sheet")
         if st.button("✨ GENERATE 20-30 LINES TAILORMADE BLUEPRINT FROM ALL FILES", use_container_width=True, key="gen_l_rules"):
-            valid_contents = [str(r['Raw_Content']) for _, r in l_data.iterrows() if not any(err in str(r['Raw_Content']).lower() for err in ["unable to compile", "ceiling met", "v1beta", "connection refused", "engine error", "timeout", "status 404"])]
+            valid_contents = [str(r['Raw_Content']) for _, r in l_data.iterrows() if not any(err in str(r['Raw_Content']).lower() for err in ["unable to compile", "ceiling met", "v1beta", "connection refused", "engine error", "timeout", "status 404", "rejected the request"])]
             
             if valid_contents:
                 combined_text = "\n\n".join(valid_contents)
@@ -367,7 +371,7 @@ with tab2:
                 
                 if is_corrupted:
                     st.warning("📋 Summary missing or corrupted due to historical endpoint connection errors.")
-                    if raw_text.strip() != "" and not any(err in raw_text.lower() for err in ["unable to compile", "connection refused", "engine error"]):
+                    if raw_text.strip() != "" and not any(err in raw_text.lower() for err in ["unable to compile", "connection refused", "engine error", "rejected the request"]):
                         if st.button("✨ Generate Missing 8-10 Line Summary Now", key=f"repair_l_{timestamp_str}_{idx}"):
                             with st.spinner("Extracting book content directly from text matrix..."):
                                 repair_prompt = f"Analyze the text content of this book document. Provide a clean, thorough summary detailing the exact key findings and what this specific document states. Focus on central lessons, actionable business insights, and execution frameworks. Your entire output response must be strictly between 8 and 10 lines long:\n\n{raw_text[:25000]}"
@@ -380,7 +384,7 @@ with tab2:
                 else:
                     st.markdown(ai_sum)
                     
-                if raw_text.strip() != "" and not any(err in raw_text.lower() for err in ["unable to compile", "connection refused", "engine error"]):
+                if raw_text.strip() != "" and not any(err in raw_text.lower() for err in ["unable to compile", "connection refused", "engine error", "rejected the request"]):
                     with st.expander("📂 Click to view original raw file text"):
                         st.text_area("Original Extracted Content", value=raw_text, height=250, disabled=True, key=f"raw_l_{timestamp_str}_{idx}")
                 st.markdown('</div>', unsafe_allow_html=True)
@@ -424,7 +428,7 @@ with tab3:
         
         st.markdown("### ⚡ Master Business Strategy Rules")
         if st.button("✨ GENERATE 20-30 LINES STRATEGIC BLUEPRINT FROM ALL VENTURE FILES", use_container_width=True, key="gen_b_rules"):
-            valid_contents = [str(r['Raw_Content']) for _, r in b_data.iterrows() if not any(err in str(r['Raw_Content']).lower() for err in ["unable to compile", "ceiling met", "v1beta", "connection refused", "engine error", "timeout", "status 404"])]
+            valid_contents = [str(r['Raw_Content']) for _, r in b_data.iterrows() if not any(err in str(r['Raw_Content']).lower() for err in ["unable to compile", "ceiling met", "v1beta", "connection refused", "engine error", "timeout", "status 404", "rejected the request"])]
             if valid_contents:
                 combined_text = "\n\n".join(valid_contents)
                 with st.spinner("Compiling production directives..."):
@@ -453,7 +457,7 @@ with tab3:
                 
                 if is_corrupted:
                     st.warning("📋 Summary uncompiled due to a structural API connection block.")
-                    if raw_text.strip() != "" and not any(err in raw_text.lower() for err in ["unable to compile", "connection refused", "engine error"]):
+                    if raw_text.strip() != "" and not any(err in raw_text.lower() for err in ["unable to compile", "connection refused", "engine error", "rejected the request"]):
                         if st.button("✨ Generate Missing 8-10 Line Summary Now", key=f"repair_b_{timestamp_str}_{idx}"):
                             with st.spinner("Extracting blueprints from original text matrix..."):
                                 repair_prompt = f"Provide a clean, comprehensive 8-to-10 line deep-dive content summary detailing the key findings and exactly what this document states. Focus on manufacturing supply chains, parameters, and design execution specs. Your entire output response must be strictly between 8 and 10 lines long:\n\n{raw_text[:22000]}"
@@ -466,7 +470,7 @@ with tab3:
                 else:
                     st.markdown(ai_sum)
                     
-                if raw_text.strip() != "" and not any(err in raw_text.lower() for err in ["unable to compile", "connection refused", "engine error"]):
+                if raw_text.strip() != "" and not any(err in raw_text.lower() for err in ["unable to compile", "connection refused", "engine error", "rejected the request"]):
                     with st.expander("📂 Click to view original raw file text"):
                         st.text_area("Original File Contents", value=raw_text, height=200, disabled=True, key=f"raw_b_{timestamp_str}_{idx}")
                 st.markdown('</div>', unsafe_allow_html=True)
@@ -534,7 +538,7 @@ with tab4:
                 
                 if is_corrupted:
                     st.warning("📋 Summary data row uncompiled due to a server connection failure.")
-                    if raw_text.strip() != "" and not any(err in raw_text.lower() for err in ["unable to compile", "connection refused", "engine error"]):
+                    if raw_text.strip() != "" and not any(err in raw_text.lower() for err in ["unable to compile", "connection refused", "engine error", "rejected the request"]):
                         if st.button("✨ Generate Missing 8-10 Line Summary Now", key=f"repair_m_{timestamp_str}_{idx}"):
                             with st.spinner("Extracting coordinates from chart data..."):
                                 repair_prompt = f"Provide a clean, comprehensive 8-to-10 line deep-dive content summary detailing the key findings and exactly what this document states. Focus on alignment rules, remedies, and instructions. Your entire output response must be strictly between 8 and 10 lines long:\n\n{raw_text[:20000]}"
@@ -547,7 +551,7 @@ with tab4:
                 else:
                     st.markdown(ai_sum)
                     
-                if raw_text.strip() != "" and not any(err in raw_text.lower() for err in ["unable to compile", "connection refused", "engine error"]):
+                if raw_text.strip() != "" and not any(err in raw_text.lower() for err in ["unable to compile", "connection refused", "engine error", "rejected the request"]):
                     with st.expander("📂 Click to view original raw file text"):
                         st.text_area("Original Content Stream", value=raw_text, height=200, disabled=True, key=f"raw_m_{timestamp_str}_{idx}")
                 st.markdown('</div>', unsafe_allow_html=True)
@@ -633,7 +637,7 @@ with tab6:
                     st.markdown(row["AI_Summary"])
                 
                 raw_text = str(row.get("Raw_Content", ""))
-                if raw_text.strip() != "" and not any(err in raw_text.lower() for err in ["unable to compile", "connection refused", "engine error"]):
+                if raw_text.strip() != "" and not any(err in raw_text.lower() for err in ["unable to compile", "connection refused", "engine error", "rejected the request"]):
                     with st.expander("📂 Click to view original raw spreadsheet text"):
                         st.text_area("Spreadsheet Extracted Array", value=raw_text, height=200, disabled=True, key=f"raw_f_{row['Timestamp']}_{idx}")
                 st.markdown('</div>', unsafe_allow_html=True)
