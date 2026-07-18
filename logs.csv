@@ -1,14 +1,14 @@
-Timestamp,Section,Score,Notes,AI_Summary,Raw_Content
-2026-07-17 12:15,Learning,10,Batch uploaded sources under tag: ,,
-2026-07-17 12:21,Learning,10,Batch uploaded sources under tag: ,,
-2026-07-17 12:26,Learning,10,Batch uploaded sources under tag: ,,
-2026-07-17 12:28,Learning,10,Batch uploaded sources under tag: ,,
-2026-07-17 13:03,Learning,10,Batch uploaded sources under tag: ,,
-2026-07-17 13:09,Learning,10,Batch uploaded sources under tag: Book,,
-2026-07-17 13:17,Learning,10,Batch: Books,,
-2026-07-17 13:18,Learning,10,Batch: Books,,
-2026-07-17 13:26,Learning,10,Batch: Books,,
-2026-07-17 14:33,Learning,10,Batch: Books,AI processing ceiling met. Payload successfully locked to vault.,
+Timestamp,Section,Score,Notes,AI_Summary,Raw_Content,RowID
+2026-07-17 12:15,Learning,10,Batch uploaded sources under tag: ,,,9ffb4c628bcf42638d8fdb59b41aafe9
+2026-07-17 12:21,Learning,10,Batch uploaded sources under tag: ,,,e72e301471f142d7b5ae3a0871a1d2b7
+2026-07-17 12:26,Learning,10,Batch uploaded sources under tag: ,,,9d202b90bedb4d97829465942ad6393c
+2026-07-17 12:28,Learning,10,Batch uploaded sources under tag: ,,,1c873210768d492aaae8cf8d68e68c30
+2026-07-17 13:03,Learning,10,Batch uploaded sources under tag: ,,,e8d37c877de5413291393cc9eec8e010
+2026-07-17 13:09,Learning,10,Batch uploaded sources under tag: Book,,,e4b9ef9a4a45471ea6f9424e87e78f29
+2026-07-17 13:17,Learning,10,Batch: Books,,,1fa051683197479c9789b57f4bb858c7
+2026-07-17 13:18,Learning,10,Batch: Books,,,c5265b0f2c9a449fa96a7a97758646a4
+2026-07-17 13:26,Learning,10,Batch: Books,,,e4f585fccb2e4939ab6f311806a428d3
+2026-07-17 14:33,Learning,10,Batch: Books,AI processing ceiling met. Payload successfully locked to vault.,,f7d86adf49064df683ea2dc5818a49ed
 2026-07-17 14:54,Learning,10,"Batch:  | Files: Arthashastra.docx, Chanakya's Chant.docx, Gita.docx, Give & Take - Adam Grant.docx, Lessons from Books - Summarised.docx, Lessons from Books.docx, Mahabharat For Me.docx, Modern Wisdom Ancient Roots.docx, The Magic of Thinking Big.docx","### Document Batch Saved Successfully
 Data files have been safely pushed to vault. Attached records: Arthashastra.docx, Chanakya's Chant.docx, Gita.docx, Give & Take - Adam Grant.docx, Lessons from Books - Summarised.docx, Lessons from Books.docx, Mahabharat For Me.docx, Modern Wisdom Ancient Roots.docx, The Magic of Thinking Big.docx","
 --- Document: Arthashastra.docx ---
@@ -28,7 +28,7 @@ Data files have been safely pushed to vault. Attached records: Arthashastra.docx
 --- Document: Modern Wisdom Ancient Roots.docx ---
 [Text extraction note: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ModelService.ListModels to see the list of available models and their supported methods.]
 --- Document: The Magic of Thinking Big.docx ---
-[Text extraction note: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ModelService.ListModels to see the list of available models and their supported methods.]"
+[Text extraction note: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ModelService.ListModels to see the list of available models and their supported methods.]",6b1fdd97c93749d1ba1454d2fcd31ba7
 2026-07-17 15:08,Learning,10,Batch:  | Files: Arthashastra.docx,"❌ System sync resolved successfully, but text summary extraction timed out. Error parameter: 404 models/gemini-pro is not found for API version v1beta, or is not supported for generateContent. Call ModelService.ListModels to see the list of available models and their supported methods.","
 --- Start Document Text: Arthashastra.docx ---
 Key Takeaways from 
@@ -423,7 +423,7 @@ Systems before trust
 Information before action
 Survival before growth
 Discipline before expansion
-"
+",7b268086140c4a3d8a097640f4b545b7
 2026-07-17 15:08,Learning,10,"Batch:  | Files: Arthashastra.docx, Chanakya's Chant.docx, Gita.docx, Give & Take - Adam Grant.docx, Lessons from Books - Summarised.docx, Lessons from Books.docx, Mahabharat For Me.docx, Modern Wisdom Ancient Roots.docx, The Magic of Thinking Big.docx","❌ System sync resolved successfully, but text summary extraction timed out. Error parameter: 404 models/gemini-pro is not found for API version v1beta, or is not supported for generateContent. Call ModelService.ListModels to see the list of available models and their supported methods.","
 --- Start Document Text: Arthashastra.docx ---
 Key Takeaways from 
@@ -3411,7 +3411,7 @@ Am I thinking bigger than yesterday?
 Memorable Quotes
 ""Believe it can be done. When you believe something can be done, your mind will find the ways to do it.""
 ""Action cures fear.""
-"
+",051bf26b065d47d4808f7911805683d6
 2026-07-17 15:14,Learning,10,"Batch:  | Files: Arthashastra.docx, Chanakya's Chant.docx, Gita.docx, Give & Take - Adam Grant.docx, Lessons from Books - Summarised.docx, Lessons from Books.docx, Mahabharat For Me.docx, Modern Wisdom Ancient Roots.docx, The Magic of Thinking Big.docx","❌ System sync resolved successfully, but text summary extraction timed out. Error parameter: 404 models/gemini-pro is not found for API version v1beta, or is not supported for generateContent. Call ModelService.ListModels to see the list of available models and their supported methods.","
 --- Start Document Text: Arthashastra.docx ---
 Key Takeaways from 
@@ -6399,7 +6399,7 @@ Am I thinking bigger than yesterday?
 Memorable Quotes
 ""Believe it can be done. When you believe something can be done, your mind will find the ways to do it.""
 ""Action cures fear.""
-"
+",3947f6b00a034e50b9c9a8c5b6632454
 2026-07-18 03:46,Learning,10,📄 Arthashastra.docx | Batch: ,"David J. Schwartz posits that professional success is governed by the scale of one's mindset rather than innate talent alone.
 The core framework centers on replacing self-limiting excuses with purposeful, solution-oriented action to drive results.
 Key insights include viewing failures as data points and curating a positive mental environment to foster resilience.
@@ -6799,7 +6799,7 @@ Cash before comfort
 Systems before trust
 Information before action
 Survival before growth
-Discipline before expansion"
+Discipline before expansion",5ba6a872660f4b179d6f06e8a8b54a20
 2026-07-18 03:46,Learning,10,📄 Chanakya's Chant.docx | Batch: ,"David J. Schwartz posits that professional success is governed by the scale of one's mindset rather than innate talent alone.
 The core framework centers on replacing self-limiting excuses with purposeful, solution-oriented action to drive results.
 Key insights include viewing failures as data points and curating a positive mental environment to foster resilience.
@@ -7012,7 +7012,7 @@ Your biggest growth opportunity is
  
 becoming emotionally harder while remaining ethically grounded.
  
-That combination becomes extremely powerful."
+That combination becomes extremely powerful.",1807e946e9724a2cad9d91e2a4f0b8c5
 2026-07-18 03:46,Learning,10,📄 Gita.docx | Batch: ,"David J. Schwartz posits that professional success is governed by the scale of one's mindset rather than innate talent alone.
 The core framework centers on replacing self-limiting excuses with purposeful, solution-oriented action to drive results.
 Key insights include viewing failures as data points and curating a positive mental environment to foster resilience.
@@ -7316,7 +7316,7 @@ Goodwill over jealousy.
  
 When the mind rests from noise, it heals itself.
 Final Essence
-Karma, character, patience, faith, and self-mastery — this is the true Gita of life."
+Karma, character, patience, faith, and self-mastery — this is the true Gita of life.",d6f8c6ffac934a84b90bd83aa809eff9
 2026-07-18 03:46,Learning,10,📄 Give & Take - Adam Grant.docx | Batch: ,"David J. Schwartz posits that professional success is governed by the scale of one's mindset rather than innate talent alone.
 The core framework centers on replacing self-limiting excuses with purposeful, solution-oriented action to drive results.
 Key insights include viewing failures as data points and curating a positive mental environment to foster resilience.
@@ -7437,7 +7437,7 @@ Result:
  Respect + trust + influence
 One-Line Summary
 : 
-The most powerful professionals aren’t takers—they’re disciplined givers who create value for everyone around them."
+The most powerful professionals aren’t takers—they’re disciplined givers who create value for everyone around them.",c27de4d35d58432598444bb86389f316
 2026-07-18 03:46,Learning,10,📄 Lessons from Books - Summarised.docx | Batch: ,"David J. Schwartz posits that professional success is governed by the scale of one's mindset rather than innate talent alone.
 The core framework centers on replacing self-limiting excuses with purposeful, solution-oriented action to drive results.
 Key insights include viewing failures as data points and curating a positive mental environment to foster resilience.
@@ -7812,7 +7812,7 @@ Everything is negotiable - Recognizing this opens up possibilities for better ou
 Information is power. The more you know about the other party's needs, interests, constraints, and alternatives, the stronger your negotiating position
 Patience is a virtue in negotiation. Resist the urge to rush to a resolution. Allowing time for discussion and consideration often leads to better outcomes
 Learn to say ""no"" effectively. A well-placed ""no"" can be a powerful tool. Be firm but polite, and explain your reasoning
-Be prepared to walk away. Knowing your limits and being willing to end negotiations if your needs aren't met is crucial"
+Be prepared to walk away. Knowing your limits and being willing to end negotiations if your needs aren't met is crucial",9ea1ef22eec04e0b8c9a6fad1bb0808a
 2026-07-18 03:46,Learning,10,📄 Lessons from Books.docx | Batch: ,"David J. Schwartz posits that professional success is governed by the scale of one's mindset rather than innate talent alone.
 The core framework centers on replacing self-limiting excuses with purposeful, solution-oriented action to drive results.
 Key insights include viewing failures as data points and curating a positive mental environment to foster resilience.
@@ -8763,7 +8763,7 @@ Behavior
  + Patience + Knowing “e
 nough” + 
 Respecting
- compounding"
+ compounding",c1612972afef4153a099ede558e8c915
 2026-07-18 03:46,Learning,10,📄 Mahabharat For Me.docx | Batch: ,"David J. Schwartz posits that professional success is governed by the scale of one's mindset rather than innate talent alone.
 The core framework centers on replacing self-limiting excuses with purposeful, solution-oriented action to drive results.
 Key insights include viewing failures as data points and curating a positive mental environment to foster resilience.
@@ -9076,7 +9076,7 @@ People are imperfect.
 Dharma is rarely black and white.
 Inner clarity matters more than outer noise.
 And perhaps the deepest lesson for you specifically:
-“Do not let conflict consume the part of you that is meant to build.”"
+“Do not let conflict consume the part of you that is meant to build.”",4b6c2d436cdd4f56b56f754d7307a1f8
 2026-07-18 03:46,Learning,10,📄 Modern Wisdom Ancient Roots.docx | Batch: ,"David J. Schwartz posits that professional success is governed by the scale of one's mindset rather than innate talent alone.
 The core framework centers on replacing self-limiting excuses with purposeful, solution-oriented action to drive results.
 Key insights include viewing failures as data points and curating a positive mental environment to foster resilience.
@@ -9340,16 +9340,16 @@ long-term consistency
 …becomes extremely difficult to compete against.
 THE ONE SENTENCE TO REMEMBER
 “Build externally with ambition, but live internally with detachment.”
-That is the real essence of Srikumar Rao’s philosophy."
-2026-07-18 03:46,Learning,10,📄 The Magic of Thinking Big.docx | Batch: ,"David J. Schwartz posits that professional success is governed by the scale of one's mindset rather than innate talent alone.
-The core framework centers on replacing self-limiting excuses with purposeful, solution-oriented action to drive results.
-Key insights include viewing failures as data points and curating a positive mental environment to foster resilience.
-Execution requires adopting a proactive attitude: instead of waiting for confidence, take small steps to build it.
-Leaders should prioritize high standards and cultivate meaningful relationships to unlock new collaborative opportunities.
-Schwartz emphasizes that actionable progress begins by replacing ""I can't"" with ""How can I?"" to overcome obstacles.
-Maintaining a long-term vision ensures persistence during temporary hardships, keeping focus on high-impact objectives.
-The daily framework demands consistent self-reflection to ensure current tasks align with your larger, ambitious goals.
-By mastering internal dialogue and setting elevated expectations, individuals effectively expand their real-world capabilities.","Key Takeaways from 
+That is the real essence of Srikumar Rao’s philosophy.",9d108661f2304508b8f8856b4441479f
+2026-07-18 03:46,Learning,10,📄 The Magic of Thinking Big.docx | Batch: ,"David J. Schwartz’s ""The Magic of Thinking Big"" asserts that success is dictated by mindset size rather than innate talent.
+The core premise mandates replacing self-doubt with purposeful action, as beliefs fundamentally shape behavioral outcomes.
+To achieve goals, one must eliminate common excuses regarding intelligence, age, or timing to focus solely on solutions.
+Confidence is not a prerequisite for starting; it is a byproduct of consistent, small-scale execution and proactive initiative.
+Cultivate an environment of excellence by curate high-value inputs and maintaining positive, solution-oriented language.
+Success requires building strong, respectful relationships and viewing failure strictly as valuable feedback for growth.
+A clear, long-term vision acts as an anchor, helping individuals navigate temporary hardships and maintain strategic focus.
+The daily framework demands asking whether your current actions prioritize future opportunities over present-day complaints.
+Ultimately, the book teaches that one must consciously stretch their thinking to surpass self-imposed limitations.","Key Takeaways from 
 The Magic of Thinking Big
  - 
 By David J. Schwartz
@@ -9440,4 +9440,4 @@ Am I thinking bigger than yesterday?
  
 Memorable Quotes
 ""Believe it can be done. When you believe something can be done, your mind will find the ways to do it.""
-""Action cures fear."""
+""Action cures fear.""",27ad6495c1584f5a869a8b692106bd7a
