@@ -15,7 +15,7 @@ from streamlit_mic_recorder import mic_recorder
 # ==========================================
 # 1. RESPONSIVE SHELL CONFIGURATION
 # ==========================================
-st.set_page_config(page_title="Khemka Life OS", page_icon="🎯", layout="centered", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="Aatma", page_icon="🎯", layout="centered", initial_sidebar_state="collapsed")
 
 # Elite Native Mobile App Theme UI Engine
 st.markdown("""
