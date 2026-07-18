@@ -41,27 +41,35 @@ REPO = st.secrets.get("GITHUB_REPO", "")
 API_KEY = st.secrets.get("GEMINI_API_KEY", "")
 
 # ==========================================
-# ⚡ SELF-HEALING VERSION-LOCKED AI ENGINE
+# ⚡ BULLETPROOF DIRECT HTTP REST AI ENGINE
 # ==========================================
 def call_gemini_engine(prompt_text):
     if not API_KEY:
         return "⚠️ Gemini API Key missing in Settings -> Secrets."
     
-    # Dynamically falls back through core model endpoints to prevent library version 404 mismatch errors
-    models_to_try = ['gemini-1.5-flash', 'gemini-pro', 'models/gemini-1.5-flash', 'models/gemini-pro']
-    last_err = ""
+    # Direct HTTP REST calls bypass the buggy SDK wrapper completely to stop 404/v1beta address crashes
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={API_KEY}"
+    headers = {"Content-Type": "application/json"}
+    payload = {
+        "contents": [{
+            "parts": [{"text": prompt_text}]
+        }]
+    }
     
-    for model_name in models_to_try:
-        try:
-            genai.configure(api_key=API_KEY)
-            intent_model = genai.GenerativeModel(model_name)
-            response = intent_model.generate_content(prompt_text)
-            return response.text
-        except Exception as e:
-            last_err = str(e)
-            continue
-            
-    return f"❌ System sync completed safely, but text summary extraction hit a platform limit. Raw content is preserved below. Info: {last_err}"
+    try:
+        response = requests.post(url, headers=headers, json=payload, timeout=30)
+        if response.status_code == 200:
+            res_json = response.json()
+            return res_json['candidates'][0]['content']['parts'][0]['text']
+        else:
+            # Secondary ultra-stable V1 production route fallback
+            url_v1 = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={API_KEY}"
+            response_v1 = requests.post(url_v1, headers=headers, json=payload, timeout=30)
+            if response_v1.status_code == 200:
+                return response_v1.json()['candidates'][0]['content']['parts'][0]['text']
+            return f"❌ AI Processing Engine Error: Status {response.status_code}. Unable to compile summary arrays."
+    except Exception as e:
+        return f"❌ Connection Timeout: {str(e)}"
 
 # ==========================================
 # ⚡ NATIVE LOCAL FILE TEXT EXTRACTOR
@@ -90,7 +98,7 @@ def extract_raw_text(uploaded_file):
         elif name.endswith(".xlsx") or name.endswith(".xls"):
             return pd.read_excel(BytesIO(file_bytes)).to_string()
         else:
-            return f"[Full raw data text block processed for asset: {uploaded_file.name}]"
+            return f"[Raw file data parsed for asset layout processing: {uploaded_file.name}]"
     except Exception as e:
         return f"[Text extraction note: {str(e)}]"
 
@@ -112,6 +120,28 @@ def save_file_to_github(file_bytes, filename, folder="vault"):
     encoded_content = base64.b64encode(file_bytes).decode("utf-8")
     payload = {"message": f"Cloud Upload: {filename}", "content": encoded_content}
     if sha: payload["sha"] = sha
+    return requests.put(url, headers=headers, json=payload).status_code in [200, 201]
+
+def sync_entire_db_to_github():
+    if not TOKEN or not REPO: return False
+    url = f"https://api.github.com/repos/{REPO}/contents/logs.csv"
+    headers = {
+        "Authorization": f"token {TOKEN}",
+        "Accept": "application/vnd.github.v3+json",
+        "Cache-Control": "no-cache",
+        "Pragma": "no-cache"
+    }
+    res = requests.get(url, headers=headers)
+    sha = res.json().get("sha") if res.status_code == 200 else None
+    
+    df_to_save = st.session_state["cached_db"]
+    encoded_content = base64.b64encode(df_to_save.to_csv(index=False).encode("utf-8")).decode("utf-8")
+    
+    payload = {
+        "message": "Database Structural Optimization Event",
+        "content": encoded_content,
+        "sha": sha if sha else None
+    }
     return requests.put(url, headers=headers, json=payload).status_code in [200, 201]
 
 def log_row_to_csv(row_dict, filename="logs.csv"):
@@ -227,18 +257,33 @@ with tab1:
             for idx, (_, row) in enumerate(h_data.iloc[::-1].iterrows()):
                 ai_sum = str(row.get('AI_Summary', ''))
                 raw_text = str(row.get("Raw_Content", ""))
+                timestamp_str = str(row['Timestamp'])
                 title_slug = str(row.get('Notes', 'Health Item')).split('|')[0]
                 
-                if "ceiling met" in ai_sum or "v1beta" in ai_sum or ai_sum.strip() == "":
-                    ai_sum = "*File logged safely into system files configuration layers.*"
+                is_corrupted = "ceiling met" in ai_sum.lower() or "v1beta" in ai_sum.lower() or "historical document" in ai_sum.lower() or ai_sum.strip() == ""
                 
                 st.markdown(f'<div class="file-card">', unsafe_allow_html=True)
                 st.markdown(f"### {title_slug}")
-                st.caption(f"Logged at: {row['Timestamp']}")
-                st.markdown(ai_sum)
-                if raw_text.strip() != "" and "v1beta" not in raw_text and "ceiling met" not in raw_text:
+                st.caption(f"Logged at: {timestamp_str}")
+                
+                if is_corrupted:
+                    st.warning("📋 Summary data row uncompiled. Click below to pull direct parsing coordinates.")
+                    if raw_text.strip() != "" and "v1beta" not in raw_text:
+                        if st.button("✨ Generate Missing 8-10 Line Summary Now", key=f"repair_h_{timestamp_str}_{idx}"):
+                            with st.spinner("Extracting content metrics directly from raw file text..."):
+                                repair_prompt = f"Provide a clean, deep-dive content summary detailing the key findings and exactly what this health document states. Focus on vital data, tracking metrics, and recommendations. Your entire output response must be strictly between 8 and 10 lines long:\n\n{raw_text[:20000]}"
+                                resolved_summary = call_gemini_engine(repair_prompt)
+                                st.session_state["cached_db"].loc[(st.session_state["cached_db"]["Timestamp"] == timestamp_str) & (st.session_state["cached_db"]["Section"] == "Health"), "AI_Summary"] = resolved_summary
+                                sync_entire_db_to_github()
+                            st.success("Summary generated and saved permanently!")
+                            time.sleep(0.5)
+                            st.rerun()
+                else:
+                    st.markdown(ai_sum)
+                    
+                if raw_text.strip() != "" and "v1beta" not in raw_text:
                     with st.expander("📂 Click to view original raw file text"):
-                        st.text_area("Original Content Stream", value=raw_text, height=200, disabled=True, key=f"raw_h_{row['Timestamp']}_{idx}")
+                        st.text_area("Original Content Stream", value=raw_text, height=200, disabled=True, key=f"raw_h_{timestamp_str}_{idx}")
                 st.markdown('</div>', unsafe_allow_html=True)
 
     h_score = st.slider("Rate physical health score today", 1, 10, 7, key="h_slider")
@@ -254,7 +299,7 @@ with tab1:
                 save_file_to_github(f_bytes, f"health_{timestamp.replace(' ','_')}_{f.name}")
                 single_file_text = extract_raw_text(f)
                 
-                prompt_input = f"Provide a comprehensive, highly detailed 12-to-15 line executive summary and lifestyle advice based on this specific health document:\n\nFile Name: {f.name}\n\nUser Notes: {h_input}\n\nDocument Contents:\n{single_file_text[:15000]}"
+                prompt_input = f"Analyze the text extracted from this specific file ({f.name}). Provide a clean, deep-dive content summary detailing the key findings and exactly what this health document states. Your entire output response must be strictly between 8 and 10 lines long:\n\nUser Context: {h_input}\n\nDocument Contents:\n{single_file_text[:15000]}"
                 ai_summary = call_gemini_engine(prompt_input)
                 
                 commit_new_log({
@@ -289,18 +334,18 @@ with tab2:
         l_data = history_df[history_df["Section"] == "Learning"]
         st.metric(label="Total Library Assets Stacked", value=len(l_data))
         
-        # 🎯 MASTER ACTION RULES ENGINE
+        # 🎯 STABLE 20-30 LINE MASTER RULES ENGINE ("TailorMade for me")
         st.markdown("### ⚡ Master Life Implementation Sheet")
-        if st.button("✨ GENERATE 10-20 ACTIONABLE LIFE RULES FROM ALL FILES", use_container_width=True, key="gen_l_rules"):
+        if st.button("✨ GENERATE 20-30 LINES TAILORMADE BLUEPRINT FROM ALL FILES", use_container_width=True, key="gen_l_rules"):
             valid_contents = [str(r['Raw_Content']) for _, r in l_data.iterrows() if "v1beta" not in str(r['Raw_Content']) and "ceiling met" not in str(r['Raw_Content']) and str(r['Raw_Content']).strip() != ""]
             
             if valid_contents:
                 combined_text = "\n\n".join(valid_contents)
-                with st.spinner("Analyzing text content vectors..."):
-                    prompt = f"You are an elite productivity strategist. Review the text contents extracted from all these books and documents. Extract exactly 10 to 20 concrete, definitive, and highly actionable execution rules or life principles that Animesh must permanently implement in his operational routine. Output them immediately as an organized high-impact list:\n\n{combined_text[:35000]}"
+                with st.spinner("Compiling entire library content layers..."):
+                    prompt = f"You are an elite high-performance mentor. Review the full text content from all books and records in this library module. Synthesize a comprehensive list of customized, actionable execution rules and principles tailor-made for Animesh to improve his routine. Your complete output must be exactly between 20 and 30 lines long total, written as a direct high-impact list:\n\n{combined_text[:35000]}"
                     st.session_state["l_master_rules"] = call_gemini_engine(prompt)
             else:
-                st.warning("No clean book text layers found in your data logs yet. Drop a fresh file down below to begin!")
+                st.warning("No clean book text fields found in your history log matrix yet. Upload a fresh document down below first!")
                 
         if "l_master_rules" in st.session_state:
             st.info(st.session_state["l_master_rules"])
@@ -311,18 +356,34 @@ with tab2:
             for idx, (_, row) in enumerate(l_data.iloc[::-1].iterrows()):
                 ai_sum = str(row.get('AI_Summary', ''))
                 raw_text = str(row.get("Raw_Content", ""))
+                timestamp_str = str(row['Timestamp'])
                 title_slug = str(row.get('Notes', 'Book File')).split('|')[0]
                 
-                if "ceiling met" in ai_sum or "v1beta" in ai_sum or ai_sum.strip() == "":
-                    ai_sum = "*Historical document log verified. Fresh file uploads below will parse clean summaries here.*"
+                is_corrupted = "ceiling met" in ai_sum.lower() or "v1beta" in ai_sum.lower() or "historical document" in ai_sum.lower() or ai_sum.strip() == ""
                 
                 st.markdown(f'<div class="file-card">', unsafe_allow_html=True)
                 st.markdown(f"### {title_slug}")
-                st.caption(f"Archived on: {row['Timestamp']}")
-                st.markdown(ai_sum)
-                if raw_text.strip() != "" and "v1beta" not in raw_text and "ceiling met" not in raw_text:
+                st.caption(f"Archived on: {timestamp_str}")
+                
+                if is_corrupted:
+                    st.warning("📋 Summary data row uncompiled. Click below to pull direct parsing coordinates.")
+                    # Instantly backfills the strict 8-10 line summary on user click request
+                    if raw_text.strip() != "" and "v1beta" not in raw_text:
+                        if st.button("✨ Generate Missing 8-10 Line Summary Now", key=f"repair_l_{timestamp_str}_{idx}"):
+                            with st.spinner("Extracting book content directly from text matrix..."):
+                                repair_prompt = f"Provide a clean, thorough content summary detailing the exact key findings and what this document states. Focus on actionable business strategies, lessons, and frameworks. Your entire output response must be strictly between 8 and 10 lines long:\n\n{raw_text[:25000]}"
+                                resolved_summary = call_gemini_engine(repair_prompt)
+                                st.session_state["cached_db"].loc[(st.session_state["cached_db"]["Timestamp"] == timestamp_str) & (st.session_state["cached_db"]["Section"] == "Learning"), "AI_Summary"] = resolved_summary
+                                sync_entire_db_to_github()
+                            st.success("Summary generated and saved permanently!")
+                            time.sleep(0.5)
+                            st.rerun()
+                else:
+                    st.markdown(ai_sum)
+                    
+                if raw_text.strip() != "" and "v1beta" not in raw_text:
                     with st.expander("📂 Click to view original raw file text"):
-                        st.text_area("Original Extracted Content", value=raw_text, height=250, disabled=True, key=f"raw_l_{row['Timestamp']}_{idx}")
+                        st.text_area("Original Extracted Content", value=raw_text, height=250, disabled=True, key=f"raw_l_{timestamp_str}_{idx}")
                 st.markdown('</div>', unsafe_allow_html=True)
         
     media_name = st.text_input("Source Batch Reference Title:")
@@ -332,13 +393,14 @@ with tab2:
         if uploaded_books:
             timestamp = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M")
             
-            # Loops over each uploaded document individually to create isolated database records
+            # Loops over each uploaded document individually to output independent rows and individual summaries
             for b in uploaded_books:
-                with st.spinner(f"Processing separate entry for: {b.name}..."):
+                with st.spinner(f"Extracting text parameters for: {b.name}..."):
                     save_file_to_github(b.getvalue(), f"library_{media_name.replace(' ','_')}_{b.name}")
                     single_book_text = extract_raw_text(b)
                     
-                    prompt = f"Analyze the text content extracted from this specific document ({b.name}). Provide a highly detailed, comprehensive 12-to-15 line executive summary of the content. Explicitly detail all core chapters, strategic frameworks, and workflows found inside the text:\n\n{single_book_text[:28000]}"
+                    # Direct parameters prompt forcing strict 8-to-10 line individual file focus
+                    prompt = f"Analyze the text extracted from this specific document ({b.name}). Provide a clean, deep-dive content summary detailing the key findings and exactly what this document states. Cover all central themes, workflows, and actionable workflows explicitly. Your entire output response must be strictly between 8 and 10 lines long:\n\n{single_book_text[:28000]}"
                     ai_summary = call_gemini_engine(prompt)
                     
                     commit_new_log({
@@ -364,12 +426,12 @@ with tab3:
         b_data = history_df[history_df["Section"] == "Business"]
         
         st.markdown("### ⚡ Master Business Strategy Rules")
-        if st.button("✨ GENERATE 10-20 STRATEGIC RULES FROM ALL VENTURE FILES", use_container_width=True, key="gen_b_rules"):
+        if st.button("✨ GENERATE 20-30 LINES STRATEGIC BLUEPRINT FROM ALL VENTURE FILES", use_container_width=True, key="gen_b_rules"):
             valid_contents = [str(r['Raw_Content']) for _, r in b_data.iterrows() if "v1beta" not in str(r['Raw_Content']) and "ceiling met" not in str(r['Raw_Content']) and str(r['Raw_Content']).strip() != ""]
             if valid_contents:
                 combined_text = "\n\n".join(valid_contents)
                 with st.spinner("Compiling production directives..."):
-                    prompt = f"Analyze my business operation metrics and data text layers completely. Extract exactly 10 to 20 precise strategic rules for global luxury export compliance, scalable distribution setups, and design utility features. Output as a bulleted list:\n\n{combined_text[:30000]}"
+                    prompt = f"Analyze my business operation metrics and data text layers completely. Synthesize a comprehensive list of precise strategic rules for global export compliance, distribution setups, and design differentiators. Your complete output must be exactly between 20 and 30 lines long total, written as a clear bulleted checklist:\n\n{combined_text[:30000]}"
                     st.session_state["b_master_rules"] = call_gemini_engine(prompt)
             else:
                 st.warning("No active corporate strategy text content files found in database archives yet.")
@@ -383,18 +445,33 @@ with tab3:
             for idx, (_, row) in enumerate(b_data.iloc[::-1].iterrows()):
                 ai_sum = str(row.get('AI_Summary', ''))
                 raw_text = str(row.get("Raw_Content", ""))
+                timestamp_str = str(row['Timestamp'])
                 title_slug = str(row.get('Notes', 'Venture File')).split('|')[0]
                 
-                if "ceiling met" in ai_sum or "v1beta" in ai_sum or ai_sum.strip() == "":
-                    ai_sum = "*Specification parameter logged securely to data servers infrastructure layer.*"
+                is_corrupted = "ceiling met" in ai_sum.lower() or "v1beta" in ai_sum.lower() or "historical document" in ai_sum.lower() or ai_sum.strip() == ""
                 
                 st.markdown(f'<div class="file-card">', unsafe_allow_html=True)
                 st.markdown(f"### {title_slug}")
-                st.caption(f"Entry Timestamp: {row['Timestamp']}")
-                st.markdown(ai_sum)
-                if raw_text.strip() != "" and "v1beta" not in raw_text and "ceiling met" not in raw_text:
+                st.caption(f"Entry Timestamp: {timestamp_str}")
+                
+                if is_corrupted:
+                    st.warning("📋 Summary data row uncompiled. Click below to pull direct parsing coordinates.")
+                    if raw_text.strip() != "" and "v1beta" not in raw_text:
+                        if st.button("✨ Generate Missing 8-10 Line Summary Now", key=f"repair_b_{timestamp_str}_{idx}"):
+                            with st.spinner("Extracting blueprints from original text matrix..."):
+                                repair_prompt = f"Provide a clean, comprehensive 8-to-10 line deep-dive content summary detailing the key findings and exactly what this document states. Focus on manufacturing supply chains, parameters, and design execution specs. Your entire output response must be strictly between 8 and 10 lines long:\n\n{raw_text[:22000]}"
+                                resolved_summary = call_gemini_engine(repair_prompt)
+                                st.session_state["cached_db"].loc[(st.session_state["cached_db"]["Timestamp"] == timestamp_str) & (st.session_state["cached_db"]["Section"] == "Business"), "AI_Summary"] = resolved_summary
+                                sync_entire_db_to_github()
+                            st.success("Summary generated and saved permanently!")
+                            time.sleep(0.5)
+                            st.rerun()
+                else:
+                    st.markdown(ai_sum)
+                    
+                if raw_text.strip() != "" and "v1beta" not in raw_text:
                     with st.expander("📂 Click to view original raw file text"):
-                        st.text_area("Original File Contents", value=raw_text, height=200, disabled=True, key=f"raw_b_{row['Timestamp']}_{idx}")
+                        st.text_area("Original File Contents", value=raw_text, height=200, disabled=True, key=f"raw_b_{timestamp_str}_{idx}")
                 st.markdown('</div>', unsafe_allow_html=True)
             
     biz_name = st.text_input("Venture Name:", value="Premium Vegan Leather Goods Brand")
@@ -407,11 +484,11 @@ with tab3:
         
         if biz_docs:
             for bd in biz_docs:
-                with st.spinner(f"Analyzing specifications text data layer for: {bd.name}..."):
+                with st.spinner(f"Analyzing specifications text layer for: {bd.name}..."):
                     save_file_to_github(bd.getvalue(), f"biz_{biz_name}_{bd.name}")
                     single_doc_text = extract_raw_text(bd)
                     
-                    prompt = f"Act as a premier luxury brand design strategist. Provide a highly focused, comprehensive 12-to-15 line tactical summary and advice sequence for this file ({bd.name}) matching our strategy rules:\n\nOperational Notes: {biz_notes}\n\nDocument Text Data:\n{single_doc_text[:20000]}"
+                    prompt = f"Act as an elite luxury brand design strategist. Analyze this specific corporate document ({bd.name}). Provide a clean, deep-dive content summary detailing the key findings and exactly what this document states. Focus on specifications, design geometry, and logistics. Your entire output response must be strictly between 8 and 10 lines long:\n\nOperational Context Notes: {biz_notes}\n\nDocument Text Data:\n{single_doc_text[:20000]}"
                     ai_summary = call_gemini_engine(prompt)
                     
                     commit_new_log({
@@ -448,17 +525,34 @@ with tab4:
             st.write("### 🌌 Active Mindset Summaries & Astro Maps:")
             for idx, (_, row) in enumerate(m_data.iloc[::-1].iterrows()):
                 title_slug = str(row.get('Notes', 'Mindset Item')).split('|')[0]
+                timestamp_str = str(row['Timestamp'])
+                ai_sum = str(row.get('AI_Summary', ''))
+                raw_text = str(row.get("Raw_Content", ""))
+                
+                is_corrupted = "ceiling met" in ai_sum.lower() or "v1beta" in ai_sum.lower() or "historical document" in ai_sum.lower() or ai_sum.strip() == ""
                 
                 st.markdown(f'<div class="file-card">', unsafe_allow_html=True)
                 st.markdown(f"### {title_slug}")
-                st.caption(f"Alignment Window: {row['Timestamp']}")
-                if "AI_Summary" in row and pd.notna(row["AI_Summary"]) and row["AI_Summary"] != "":
-                    st.markdown(row["AI_Summary"])
+                st.caption(f"Alignment Window: {timestamp_str}")
                 
-                raw_text = str(row.get("Raw_Content", ""))
-                if raw_text.strip() != "" and "v1beta" not in raw_text and "ceiling met" not in raw_text:
+                if is_corrupted:
+                    st.warning("📋 Summary data row uncompiled. Click below to pull direct parsing coordinates.")
+                    if raw_text.strip() != "" and "v1beta" not in raw_text:
+                        if st.button("✨ Generate Missing 8-10 Line Summary Now", key=f"repair_m_{timestamp_str}_{idx}"):
+                            with st.spinner("Extracting coordinates from chart data..."):
+                                repair_prompt = f"Provide a clean, comprehensive 8-to-10 line deep-dive content summary detailing the key findings and exactly what this document states. Focus on alignment rules, remedies, and instructions. Your entire output response must be strictly between 8 and 10 lines long:\n\n{raw_text[:20000]}"
+                                resolved_summary = call_gemini_engine(repair_prompt)
+                                st.session_state["cached_db"].loc[(st.session_state["cached_db"]["Timestamp"] == timestamp_str) & (st.session_state["cached_db"]["Section"] == "Mindset"), "AI_Summary"] = resolved_summary
+                                sync_entire_db_to_github()
+                            st.success("Summary generated and saved permanently!")
+                            time.sleep(0.5)
+                            st.rerun()
+                else:
+                    st.markdown(ai_sum)
+                    
+                if raw_text.strip() != "" and "v1beta" not in raw_text:
                     with st.expander("📂 Click to view original raw file text"):
-                        st.text_area("Original Content Stream", value=raw_text, height=200, disabled=True, key=f"raw_m_{row['Timestamp']}_{idx}")
+                        st.text_area("Original Content Stream", value=raw_text, height=200, disabled=True, key=f"raw_m_{timestamp_str}_{idx}")
                 st.markdown('</div>', unsafe_allow_html=True)
 
     if st.button("Fetch Daily Meditation & Energy Shield Protocol", use_container_width=True):
@@ -485,7 +579,7 @@ with tab4:
                 save_file_to_github(af.getvalue(), f"astro_{af.name}")
                 single_chart_text = extract_raw_text(af)
                 
-                prompt = f"Perform structured parsing and diagnostic 12-to-15 line rule synthesis from this raw data chart text layer ({af.name}):\n\n{single_chart_text[:20000]}"
+                prompt = f"Analyze this structural natal data layer ({af.name}). Provide a clean, deep-dive content summary detailing the exact key findings and what this chart text states. Extract direct personal alignment remedies. Your entire output response must be strictly between 8 and 10 lines long:\n\n{single_chart_text[:20000]}"
                 ai_summary = call_gemini_engine(prompt)
                 
                 commit_new_log({
@@ -542,7 +636,7 @@ with tab6:
                     st.markdown(row["AI_Summary"])
                 
                 raw_text = str(row.get("Raw_Content", ""))
-                if raw_text.strip() != "" and "v1beta" not in raw_text and "ceiling met" not in raw_text:
+                if raw_text.strip() != "" and "v1beta" not in raw_text:
                     with st.expander("📂 Click to view original raw spreadsheet text"):
                         st.text_area("Spreadsheet Extracted Array", value=raw_text, height=200, disabled=True, key=f"raw_f_{row['Timestamp']}_{idx}")
                 st.markdown('</div>', unsafe_allow_html=True)
@@ -556,7 +650,7 @@ with tab6:
         except Exception:
             pass
         
-        ai_summary = call_gemini_engine(f"Provide an assertive technical 12-to-15 line market layout brief for an Indian equities operator. Index validation state: Nifty 50 close tracking near {nifty_close}. Highlight 3 alpha trading sectors for outperformance.")
+        ai_summary = call_gemini_engine(f"Provide an assertive technical market layout brief for an Indian equities operator. Index validation state: Nifty 50 close tracking near {nifty_close}. Highlight 3 alpha trading sectors for outperformance.")
                 
         commit_new_log({
             "Timestamp": timestamp,
