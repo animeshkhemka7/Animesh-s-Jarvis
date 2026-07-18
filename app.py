@@ -13,26 +13,136 @@ from datetime import datetime
 from streamlit_mic_recorder import mic_recorder
 
 # ==========================================
-# 1. RESPONSIVE SHELL CONFIGURATION
+# 1. RESPONSIVE SHELL CONFIGURATION (UX UPGRADED)
 # ==========================================
 st.set_page_config(page_title="Khemka Life OS", page_icon="🎯", layout="centered", initial_sidebar_state="collapsed")
 
+# Elite SaaS / Native Mobile App CSS Engine
 st.markdown("""
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+        /* Global Typography & Background */
+        html, body, [class*="css"] {
+            font-family: 'Inter', sans-serif !important;
+            color: #0F172A;
+        }
+        .stApp {
+            background-color: #F8FAFC;
+        }
         #MainMenu {visibility: hidden;} footer {visibility: hidden;} header {visibility: hidden;}
-        .block-container {padding-top: 0.5rem; padding-bottom: 2rem;}
-        .stButton>button {border-radius: 8px; height: 3em; font-weight: bold;}
-        .sync-btn>div>button {background-color: #059669 !important; color: white !important; border: none;}
-        .stTabs [data-baseweb="tab-list"] {gap: 4px; justify-content: space-around;}
-        .stTabs [data-baseweb="tab"] {padding: 6px 10px; background-color: #F3F4F6; border-radius: 6px; font-size: 11px;}
-        .file-card {background-color: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05);}
-        .tip-box {background-color: #ECFDF5; border-left: 4px solid #10B981; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;}
-        .quote-box {background-color: #F3F4F6; border-left: 4px solid #6B7280; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; font-style: italic;}
-        .guru-box {background-color: #FFFBEB; border-left: 4px solid #F59E0B; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;}
-        .tracker-header {font-size: 14px; font-weight: bold; color: #374151; margin-bottom: -10px;}
+        .block-container {padding-top: 1rem; padding-bottom: 3rem;}
+        
+        /* Modern Pill-Shaped Tabs */
+        .stTabs [data-baseweb="tab-list"] {
+            gap: 8px;
+            background-color: #E2E8F0;
+            padding: 8px;
+            border-radius: 16px;
+            justify-content: center;
+        }
+        .stTabs [data-baseweb="tab"] {
+            padding: 8px 16px;
+            background-color: transparent;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #64748B;
+            border: none;
+            transition: all 0.2s ease-in-out;
+        }
+        .stTabs [aria-selected="true"] {
+            background-color: #FFFFFF !important;
+            color: #0F172A !important;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        /* Buttons & Inputs */
+        .stButton>button {
+            border-radius: 12px; 
+            height: 3.2em; 
+            font-weight: 600;
+            transition: all 0.2s ease;
+            border: 1px solid #CBD5E1;
+            background-color: #FFFFFF;
+        }
+        .stButton>button:hover {
+            border-color: #3B82F6;
+            color: #3B82F6;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.1);
+        }
+        .sync-btn>div>button {
+            background-color: #10B981 !important; 
+            color: white !important; 
+            border: none;
+            box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.2);
+        }
+        .sync-btn>div>button:hover {
+            background-color: #059669 !important;
+            color: white !important;
+        }
+
+        /* Beautiful Floating UI Cards */
+        .file-card {
+            background-color: #FFFFFF; 
+            border: 1px solid #E2E8F0; 
+            border-radius: 16px; 
+            padding: 1.5rem; 
+            margin-bottom: 1.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.03), 0 2px 4px -1px rgba(0,0,0,0.02);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .file-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05), 0 4px 6px -2px rgba(0,0,0,0.03);
+        }
+
+        /* Callout Boxes */
+        .tip-box {
+            background: linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%);
+            border-left: 5px solid #10B981;
+            padding: 1.2rem;
+            border-radius: 12px;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+            color: #064E3B;
+        }
+        .quote-box {
+            background: linear-gradient(135deg, #F1F5F9 0%, #E2E8F0 100%);
+            border-left: 5px solid #64748B;
+            padding: 1.2rem;
+            border-radius: 12px;
+            margin-bottom: 1.5rem;
+            font-style: italic;
+            font-weight: 500;
+            color: #334155;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        }
+        .guru-box {
+            background: linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%);
+            border-left: 5px solid #F59E0B;
+            padding: 1.2rem;
+            border-radius: 12px;
+            margin-bottom: 1.5rem;
+            color: #78350F;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        }
+
+        /* Typography spacing */
+        h1, h2, h3, h4 {
+            color: #0F172A;
+            font-weight: 700 !important;
+            letter-spacing: -0.02em;
+        }
+        hr {
+            margin: 2rem 0;
+            border-color: #E2E8F0;
+        }
     </style>
 """, unsafe_allow_html=True)
 
+# Secure Environment Infrastructure Pips
 TOKEN = st.secrets.get("GITHUB_TOKEN", "").strip()
 REPO = st.secrets.get("GITHUB_REPO", "").strip()
 API_KEY = st.secrets.get("GEMINI_API_KEY", "").strip()
@@ -46,17 +156,21 @@ def get_daily_content(category):
         "health_quotes": [
             "Your body hears everything your mind says. Keep it clean and strong.",
             "Physical vitality is the ultimate launchpad for business execution.",
-            "Fitness is a shield built daily. Steps, sleep, and discipline matter."
+            "Fitness is a shield built daily. Steps, sleep, and discipline matter.",
+            "The mind commands the body, and it obeys. Commit to your routine today.",
+            "Protect your physical engine; it carries your entire operational ambitions."
         ],
         "learning_quotes": [
             "Continuous self-development is the minimum speed required to lead global fields.",
             "An investment in deeper master skills pays the ultimate interest.",
-            "Acquiring new vector parameters daily separates commodity from high-end empire."
+            "Acquiring new vector parameters daily separates commodity from high-end empire.",
+            "Develop an insatiable hunger for wisdom, and your execution will never fail."
         ],
         "biz_quotes": [
             "Vision without execution is hallucination. Delegate, ideate, dominate.",
             "Deep work blocks build empires. Distraction destroys them.",
-            "Focus on the macro strategy; delegate the micro execution."
+            "Focus on the macro strategy; delegate the micro execution.",
+            "Success is the sum of small, disciplined decisions repeated every single day."
         ],
         "peace_quotes": [
             "Peace is not the absence of chaos, but the mastery of mind within it.",
@@ -69,29 +183,31 @@ def get_daily_content(category):
             "Do not lower your goals to the level of your abilities. Raise your abilities to the height of your goals."
         ],
         "meditation": [
-            "**Today's Technique:** 4-7-8 Breathing. Inhale for 4 seconds, hold for 7, exhale forcefully for 8. Repeat 4 times to instantly reset the nervous system.",
-            "**Today's Technique:** Box Breathing. Inhale 4s, hold 4s, exhale 4s, hold 4s. Use this before entering deep work blocks.",
-            "**Today's Technique:** Body Scan. Spend 5 minutes mentally scanning from toes to head, actively releasing tension in each muscle group."
+            "**Today's Technique:** 4-7-8 Breathing. Inhale 4s, hold 7s, exhale 8s. Repeat 4 times to reset the nervous system.",
+            "**Today's Technique:** Box Breathing. Inhale 4s, hold 4s, exhale 4s, hold 4s. Use before entering deep work blocks.",
+            "**Today's Technique:** Body Scan. Spend 5 minutes mentally scanning from toes to head, releasing tension actively."
         ],
         "manifestation": [
-            "**Today's Practice:** Visualization. Spend 3 minutes seeing your ultimate global export empire operating at full capacity. Feel the reality of it.",
-            "**Today's Practice:** Gratitude Journaling. Write down 3 micro-wins from yesterday to tune your reticular activating system to success.",
-            "**Today's Practice:** Identity Affirmation. 'I am a highly disciplined, calm, and visionary operator building a legacy.' Repeat 10 times."
+            "**Today's Practice:** Visualization. Spend 3 minutes seeing your ultimate global export empire operating at full capacity.",
+            "**Today's Practice:** Gratitude Journaling. Write down 3 micro-wins from yesterday to tune your focus to success.",
+            "**Today's Practice:** Identity Affirmation. 'I am a highly disciplined, calm, and visionary operator building a legacy.'"
         ]
     }
-    return content[category][day % len(content[category])]
+    return content.get(category, [""])[day % len(content.get(category, [""]))]
 
 # ==========================================
-# ⚡ AI ENGINE (Upgraded for Multi-Modal Files)
+# ⚡ SAFE REST AI ENGINE (Untouched Backend)
 # ==========================================
 def call_gemini_engine(prompt_text, file_bytes=None, mime_type=None):
     if not API_KEY:
         return "⚠️ Gemini API Key missing in Settings -> Secrets."
 
-    models_to_try = ['gemini-3.5-flash', 'gemini-3.1-flash-lite']
-    headers = {"Content-Type": "application/json"}
+    versions = ['v1beta', 'v1']
+    models_to_scan = ['gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-1.5-pro', 'gemini-pro']
     
+    headers = {"Content-Type": "application/json"}
     parts = [{"text": prompt_text}]
+    
     if file_bytes and mime_type:
         parts.append({
             "inline_data": {
@@ -103,28 +219,31 @@ def call_gemini_engine(prompt_text, file_bytes=None, mime_type=None):
     payload = {"contents": [{"parts": parts}]}
     debug_logs = []
     
-    for model_name in models_to_try:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={API_KEY}"
-        try:
-            response = requests.post(url, headers=headers, json=payload, timeout=40)
-            if response.status_code == 200:
-                res_json = response.json()
-                return res_json['candidates'][0]['content']['parts'][0]['text']
-            else:
-                debug_logs.append(f"[{model_name}]: HTTP {response.status_code} - {response.text[:150]}")
-        except Exception as e:
-            debug_logs.append(f"[{model_name}]: Exception - {str(e)[:150]}")
-            continue
+    for version in versions:
+        for model_name in models_to_scan:
+            url = f"https://generativelanguage.googleapis.com/{version}/models/{model_name}:generateContent?key={API_KEY}"
+            try:
+                response = requests.post(url, headers=headers, json=payload, timeout=40)
+                if response.status_code == 200:
+                    res_json = response.json()
+                    return res_json['candidates'][0]['content']['parts'][0]['text']
+                else:
+                    debug_logs.append(f"[{version}/{model_name}]: HTTP {response.status_code} - {response.text[:150]}")
+            except Exception as e:
+                debug_logs.append(f"[{version}/{model_name}]: Exception - {str(e)[:150]}")
+                continue
 
-    return "❌ Gemini request failed. Diagnostic Log:\n" + "\n".join(debug_logs)
+    return "❌ Gemini request failed. Diagnostic Log:\n" + "\n".join(debug_logs[-2:])
 
 # ==========================================
 # ⚡ VOICE-TO-TEXT ENGINE
 # ==========================================
 def transcribe_audio_with_gemini(audio_bytes):
-    if not API_KEY or not audio_bytes: return None
+    if not API_KEY or not audio_bytes: 
+        return None
+        
     audio_b64 = base64.b64encode(audio_bytes).decode("utf-8")
-    models_to_try = ['gemini-3.5-flash', 'gemini-3.1-flash-lite']
+    models_to_try = ['gemini-1.5-flash', 'gemini-1.5-pro']
     headers = {"Content-Type": "application/json"}
     payload = {
         "contents": [{
@@ -134,13 +253,15 @@ def transcribe_audio_with_gemini(audio_bytes):
             ]
         }]
     }
+    
     for model_name in models_to_try:
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={API_KEY}"
         try:
             response = requests.post(url, headers=headers, json=payload, timeout=30)
             if response.status_code == 200:
                 return response.json()['candidates'][0]['content']['parts'][0]['text'].strip()
-        except: continue
+        except Exception: 
+            continue
     return None
 
 def voice_input_widget(target_session_key, widget_key, label="🎤 Record Voice Note"):
@@ -150,7 +271,10 @@ def voice_input_widget(target_session_key, widget_key, label="🎤 Record Voice 
             transcript = transcribe_audio_with_gemini(audio['bytes'])
         if transcript:
             existing = st.session_state.get(target_session_key, "")
-            st.session_state[target_session_key] = (existing.strip() + " " + transcript).strip() if existing else transcript
+            if existing:
+                st.session_state[target_session_key] = (existing.strip() + " " + transcript).strip()
+            else:
+                st.session_state[target_session_key] = transcript
             st.success("Voice note transcribed — review it below before saving.")
             time.sleep(0.3)
             st.rerun()
@@ -159,11 +283,14 @@ def voice_input_widget(target_session_key, widget_key, label="🎤 Record Voice 
 # ⚡ NATIVE LOCAL FILE TEXT EXTRACTOR
 # ==========================================
 def extract_raw_text(uploaded_file):
-    if uploaded_file is None: return ""
+    if uploaded_file is None:
+        return ""
     try:
         name = uploaded_file.name.lower()
         file_bytes = uploaded_file.getvalue()
-        if name.endswith(".txt"): return file_bytes.decode("utf-8", errors="ignore")
+        
+        if name.endswith(".txt"):
+            return file_bytes.decode("utf-8", errors="ignore")
         elif name.endswith(".docx"):
             wb_io = BytesIO(file_bytes)
             with zipfile.ZipFile(wb_io) as docx:
@@ -172,9 +299,12 @@ def extract_raw_text(uploaded_file):
                 ns = {'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'}
                 text_pieces = [node.text for node in root.findall('.//w:t', ns) if node.text]
                 return "\n".join(text_pieces)
-        elif name.endswith(".csv"): return pd.read_csv(BytesIO(file_bytes)).to_string()
-        elif name.endswith(".xlsx") or name.endswith(".xls"): return pd.read_excel(BytesIO(file_bytes)).to_string()
-        else: return f"[Binary File Uploaded: {uploaded_file.name}]"
+        elif name.endswith(".csv"):
+            return pd.read_csv(BytesIO(file_bytes)).to_string()
+        elif name.endswith(".xlsx") or name.endswith(".xls"):
+            return pd.read_excel(BytesIO(file_bytes)).to_string()
+        else:
+            return f"[Binary File Uploaded: {uploaded_file.name}]"
     except Exception as e:
         return f"[Text extraction note: {str(e)}]"
 
@@ -182,56 +312,95 @@ def extract_raw_text(uploaded_file):
 # ⚡ SECURE MULTI-DEVICE DATA LOCKER PIPELINE
 # ==========================================
 def save_file_to_github(file_bytes, filename, folder="vault"):
-    if not TOKEN or not REPO: return False
+    if not TOKEN or not REPO: 
+        return False
     path = f"{folder}/{filename}"
     url = f"https://api.github.com/repos/{REPO}/contents/{path}"
     headers = {"Authorization": f"token {TOKEN}", "Accept": "application/vnd.github.v3+json", "Cache-Control": "no-cache"}
     res = requests.get(url, headers=headers)
     sha = res.json().get("sha") if res.status_code == 200 else None
+    
     encoded_content = base64.b64encode(file_bytes).decode("utf-8")
     payload = {"message": f"Cloud Upload: {filename}", "content": encoded_content}
     if sha: payload["sha"] = sha
-    return requests.put(url, headers=headers, json=payload).status_code in [200, 201]
+        
+    response = requests.put(url, headers=headers, json=payload)
+    return response.status_code in [200, 201]
 
 def sync_entire_db_to_github():
-    if not TOKEN or not REPO: return False
+    if not TOKEN or not REPO: 
+        return False
     url = f"https://api.github.com/repos/{REPO}/contents/logs.csv"
     headers = {"Authorization": f"token {TOKEN}", "Accept": "application/vnd.github.v3+json", "Cache-Control": "no-cache"}
     res = requests.get(url, headers=headers)
     sha = res.json().get("sha") if res.status_code == 200 else None
+    
     df_to_save = st.session_state["cached_db"]
     encoded_content = base64.b64encode(df_to_save.to_csv(index=False).encode("utf-8")).decode("utf-8")
-    payload = {"message": "Database Sync Event", "content": encoded_content, "sha": sha if sha else None}
-    return requests.put(url, headers=headers, json=payload).status_code in [200, 201]
+    payload = {"message": "Database Structural Optimization Event", "content": encoded_content, "sha": sha if sha else None}
+    
+    response = requests.put(url, headers=headers, json=payload)
+    return response.status_code in [200, 201]
+
+def log_row_to_csv(row_dict, filename="logs.csv"):
+    if not TOKEN or not REPO: 
+        return
+    url = f"https://api.github.com/repos/{REPO}/contents/{filename}?nocache={int(time.time())}"
+    headers = {"Authorization": f"token {TOKEN}", "Accept": "application/vnd.github.v3+json", "Cache-Control": "no-cache"}
+    res = requests.get(url, headers=headers)
+    existing_content = ""
+    sha = None
+    
+    if res.status_code == 200:
+        sha = res.json().get("sha")
+        existing_content = base64.b64decode(res.json().get("content")).decode("utf-8")
+        df = pd.read_csv(BytesIO(existing_content.encode("utf-8")))
+    else:
+        df = pd.DataFrame(columns=["Timestamp", "Section", "Score", "Notes", "AI_Summary", "Raw_Content", "RowID"])
+    
+    if "AI_Summary" not in df.columns: df["AI_Summary"] = ""
+    if "Raw_Content" not in df.columns: df["Raw_Content"] = ""
+    if "RowID" not in df.columns: df["RowID"] = ""
+        
+    df = pd.concat([df, pd.DataFrame([row_dict])], ignore_index=True)
+    payload = {"message": "Realtime Data Sync Event", "content": base64.b64encode(df.to_csv(index=False).encode("utf-8")).decode("utf-8"), "sha": sha if sha else None}
+    requests.put(f"https://api.github.com/repos/{REPO}/contents/{filename}", headers=headers, json=payload)
 
 def load_live_database_uncached():
-    if not TOKEN or not REPO: return pd.DataFrame(columns=["Timestamp", "Section", "Score", "Notes", "AI_Summary", "Raw_Content", "RowID"])
+    if not TOKEN or not REPO: 
+        return pd.DataFrame(columns=["Timestamp", "Section", "Score", "Notes", "AI_Summary", "Raw_Content", "RowID"])
+        
     url = f"https://api.github.com/repos/{REPO}/contents/logs.csv?t={int(time.time())}"
     headers = {"Authorization": f"token {TOKEN}", "Accept": "application/vnd.github.v3+json", "Cache-Control": "no-cache"}
     try:
         res = requests.get(url, headers=headers)
         if res.status_code == 200:
             content_b64 = res.json().get("content", "")
-            loaded_df = pd.read_csv(BytesIO(base64.b64decode(content_b64).decode("utf-8")))
+            content_str = base64.b64decode(content_b64).decode("utf-8")
+            loaded_df = pd.read_csv(BytesIO(content_str.encode("utf-8")))
+            
             if "AI_Summary" not in loaded_df.columns: loaded_df["AI_Summary"] = ""
             if "Raw_Content" not in loaded_df.columns: loaded_df["Raw_Content"] = ""
             if "RowID" not in loaded_df.columns: loaded_df["RowID"] = ""
+
             missing_id_mask = loaded_df["RowID"].isna() | (loaded_df["RowID"].astype(str).str.strip() == "")
             if missing_id_mask.any():
                 loaded_df.loc[missing_id_mask, "RowID"] = [uuid.uuid4().hex for _ in range(int(missing_id_mask.sum()))]
             return loaded_df
-    except: pass
+    except:
+        pass
     return pd.DataFrame(columns=["Timestamp", "Section", "Score", "Notes", "AI_Summary", "Raw_Content", "RowID"])
 
 def commit_new_log(row_dict):
     if "AI_Summary" not in row_dict: row_dict["AI_Summary"] = ""
     if "Raw_Content" not in row_dict: row_dict["Raw_Content"] = ""
     if not row_dict.get("RowID"): row_dict["RowID"] = uuid.uuid4().hex
+        
     if st.session_state["cached_db"].empty:
         st.session_state["cached_db"] = pd.DataFrame([row_dict])
     else:
         st.session_state["cached_db"] = pd.concat([st.session_state["cached_db"], pd.DataFrame([row_dict])], ignore_index=True)
-    sync_entire_db_to_github()
+    log_row_to_csv(row_dict)
 
 def regenerate_summary_for_row(row_id, section, raw_text, prompt_template):
     resolved_summary = call_gemini_engine(prompt_template)
@@ -259,11 +428,14 @@ def get_existing_filenames(section):
 # ==========================================
 # MASTER DATA INITIALIZATION
 # ==========================================
-if "cached_db" not in st.session_state: st.session_state["cached_db"] = load_live_database_uncached()
-for col in ["AI_Summary", "Raw_Content", "RowID"]:
-    if col not in st.session_state["cached_db"].columns: st.session_state["cached_db"][col] = ""
+if "cached_db" not in st.session_state:
+    st.session_state["cached_db"] = load_live_database_uncached()
 
-st.title("🎯 Khemka Life OS")
+for col in ["AI_Summary", "Raw_Content", "RowID"]:
+    if col not in st.session_state["cached_db"].columns:
+        st.session_state["cached_db"][col] = ""
+
+st.markdown("<h1 style='text-align: center; color: #0F172A; margin-bottom: 20px;'>🎯 Khemka Life OS</h1>", unsafe_allow_html=True)
 
 st.markdown('<div class="sync-btn">', unsafe_allow_html=True)
 if st.button("🔄 FORCE SYNC ALL DEVICES NOW", use_container_width=True):
@@ -291,19 +463,25 @@ with tab1:
     st.markdown("### 📋 Daily Fitness Core Protocol")
     st.markdown('<div class="tip-box">', unsafe_allow_html=True)
     st.markdown("""
-    **Follow these non-negotiable protocols daily:**
-    1. 💧 **Hydration Engine:** Drink at least 2 liters of magic water daily.
-    2. 🏃 **Daily Activity:** Exercise / run every morning targeting 20,000 steps.
+    **Follow these 18 non-negotiable protocols daily:**
+    1. 💧 **Hydration Engine:** Drink at least 3-4 liters of water daily to maintain cellular function.
+    2. 🏃 **Daily Activity Target:** Commit to 20,000 steps daily, leveraging walking during calls or meetings.
     3. 🛌 **Circadian Sleep Window:** Lock down recovery cycles strictly by sleeping at 10 PM and waking at 5 AM.
-    4. 🥦 **Nutritional Shielding:** Proper & healthy food only — no junk food, zero sugar, proper protein.
-    5. 🫁 **Respiratory Reset:** Execute deep breathing exercises daily.
-    6. 🚿 **Dopamine Reset:** Take cold showers daily.
-    7. 🚶 **NEAT Activity:** Take only the stairs, never the lift.
-    8. 📵 **Digital Boundaries:** No gadgets in the washroom & strictly no screens after 9:30 PM.
-    9. 🧘 **Mental Clarity:** Execute a proper digital detox window daily.
-    10. 🦷 **Oral Hygiene:** Brush 2 times a day properly.
-    11. 🧴 **Dermatology:** Maintain proper skincare & hygiene routine.
-    12. 🧬 **Hormonal Health:** Actively follow routines to increase and maintain Testosterone levels.
+    4. 🥦 **Nutritional Shielding:** Fuel exclusively with healthy whole foods; zero processed junk food.
+    5. 🛑 **Sugar Elimination:** Completely eradicate refined sugars from your diet to prevent energy crashes.
+    6. 🥩 **Protein Synthesis:** Ensure high, lean protein intake with every single meal to rebuild muscle.
+    7. 🫁 **Respiratory Reset:** Execute deep breathing exercises daily to regulate nervous system stress.
+    8. 🚿 **Dopamine Reset:** End showers with 60 seconds of cold exposure to spike natural dopamine.
+    9. 🚶 **NEAT Activity:** Always take the stairs. Never take the lift or escalator.
+    10. 📵 **Digital Boundaries:** Strictly no gadgets in the washroom. 
+    11. 🌙 **Screen Curfew:** Absolute cessation of all screen exposure after 9:30 PM.
+    12. 🧘 **Mental Clarity:** Execute a proper digital detox window every afternoon.
+    13. 🦷 **Oral Hygiene:** Brush thoroughly 2 times a day to prevent systemic inflammation.
+    14. 🧴 **Dermatology:** Maintain a proper daily skin care and personal hygiene routine.
+    15. 🧬 **Hormonal Health:** Actively engage in heavy lifting and sleep optimization to increase Testosterone levels.
+    16. ☀️ **Morning Sunlight:** Get natural sunlight in your eyes within 15 minutes of waking at 5 AM.
+    17. 🏋️ **Resistance Training:** Engage in structured weightlifting at least 4 times a week.
+    18. 🧘 **Posture Correction:** Stretch hamstrings and spinal columns every evening to counter seated work.
     """)
     st.markdown('</div>', unsafe_allow_html=True)
     
@@ -328,7 +506,7 @@ with tab1:
     st.markdown(f'<div class="quote-box">"{get_daily_content("health_quotes")}"</div>', unsafe_allow_html=True)
     
     st.markdown("### 📊 Body Composition Dashboard")
-    voice_input_widget("h_stats_pad", "voice_health_stats", label="🎤 Dictate Body Stats (Weight, BMI, Fat % - Current & Target)")
+    voice_input_widget("h_stats_pad", "voice_health_stats", label="🎤 Dictate Body Stats")
     stats_voice_capture = st.text_area("Metrics Command Matrix Analyzer:", key="h_stats_pad", placeholder="Example: Current Weight 75, Target Weight 70, Current Fat 14%, Target Fat 12%, Current BMI 22.4")
     
     if st.button("💾 Parse & Append Body Stats Data Stream", use_container_width=True):
@@ -340,14 +518,18 @@ with tab1:
                     p = [float(val.strip()) for val in parsed_res.split(",")]
                     timestamp = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S")
                     commit_new_log({
-                        "Timestamp": timestamp, "Section": "Health_Stats", "Score": p[0], "Notes": f"Body Stats Update",
+                        "Timestamp": timestamp, 
+                        "Section": "Health_Stats", 
+                        "Score": p[0], 
+                        "Notes": f"Body Stats Update",
                         "AI_Summary": f"### Body Stat Calibration:\n* **Weight:** {p[0]}kg (Target {p[1]}kg)\n* **Fat:** {p[2]}% (Target {p[3]}%)\n* **BMI:** {p[4]}",
                         "Raw_Content": f"{p[0]},{p[1]},{p[2]},{p[3]},{p[4]}"
                     })
                     st.success("Body statistics synced cleanly!")
                     time.sleep(0.4)
                     st.rerun()
-                except: st.error("Extraction unaligned. Try structuring: 'Current Weight 75, Target 70, Fat 14, Target 12, BMI 22'")
+                except Exception: 
+                    st.error("Extraction unaligned. Try structuring: 'Current Weight 75, Target 70, Fat 14, Target 12, BMI 22'")
 
     if not history_df.empty:
         stats_history = history_df[history_df["Section"] == "Health_Stats"]
@@ -356,35 +538,62 @@ with tab1:
             for _, r in stats_history.iterrows():
                 try:
                     vals = [float(v.strip()) for v in str(r["Raw_Content"]).split(",")]
-                    chart_entries.append({"Date": r["Timestamp"][:10], "Weight": vals[0], "Target Weight": vals[1], "Fat %": vals[2], "Target Fat %": vals[3], "BMI": vals[4]})
+                    chart_entries.append({
+                        "Date": r["Timestamp"][:10], 
+                        "Weight": vals[0], "Target Weight": vals[1], 
+                        "Fat %": vals[2], "Target Fat %": vals[3], 
+                        "BMI": vals[4]
+                    })
                 except: continue
             if chart_entries:
                 df_metrics = pd.DataFrame(chart_entries).set_index("Date")
                 c1, c2, c3 = st.columns(3)
-                with c1: st.write("**Weight**"); st.line_chart(df_metrics[["Weight", "Target Weight"]])
-                with c2: st.write("**Fat %**"); st.line_chart(df_metrics[["Fat %", "Target Fat %"]])
-                with c3: st.write("**BMI**"); st.line_chart(df_metrics[["BMI"]])
+                with c1: 
+                    st.write("**Weight**")
+                    st.line_chart(df_metrics[["Weight", "Target Weight"]])
+                with c2: 
+                    st.write("**Fat %**")
+                    st.line_chart(df_metrics[["Fat %", "Target Fat %"]])
+                with c3: 
+                    st.write("**BMI**")
+                    st.line_chart(df_metrics[["BMI"]])
 
     st.write("---")
     st.markdown("### 📂 Health Files & Diagnostics Vault")
     uploaded_files = st.file_uploader("Upload incoming health data files / logs:", type=["pdf", "png", "jpg", "xlsx", "docx"], accept_multiple_files=True, key="h_bulk")
+    
     if st.button("Inject File Vectors to Health Vault", use_container_width=True):
         if uploaded_files:
+            existing_names = get_existing_filenames("Health")
+            skipped = []
             for f in uploaded_files:
-                f_bytes = f.getvalue()
+                if f.name in existing_names:
+                    skipped.append(f.name)
+                    continue
+                    
                 timestamp = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S")
+                f_bytes = f.getvalue()
                 save_file_to_github(f_bytes, f"health_{timestamp.replace(' ','_').replace(':','-')}_{f.name}")
                 
-                # Check if it's an image/pdf and use multimodal engine, else raw text
                 mime_type = "application/pdf" if f.name.endswith(".pdf") else ("image/jpeg" if f.name.endswith(".jpg") or f.name.endswith(".jpeg") else "image/png" if f.name.endswith(".png") else None)
+                
                 if mime_type:
                     ai_summary = call_gemini_engine("Provide a clean, deep-dive content summary detailing the key findings of this health document. Focus on core observations and parameters. Strictly 8-10 lines long.", file_bytes=f_bytes, mime_type=mime_type)
-                    raw_extracted = "[Image/PDF Multi-modal File]"
+                    raw_extracted = f"[Image/PDF Multi-modal File: {f.name}]"
                 else:
                     raw_extracted = extract_raw_text(f)
                     ai_summary = call_gemini_engine(f"Provide a clean, deep-dive content summary detailing the key findings. Strictly 8-10 lines long:\n\n{raw_extracted[:15000]}")
                 
-                commit_new_log({"Timestamp": timestamp, "Section": "Health", "Score": 10, "Notes": f"📄 {f.name}", "AI_Summary": ai_summary, "Raw_Content": raw_extracted})
+                commit_new_log({
+                    "Timestamp": timestamp, 
+                    "Section": "Health", 
+                    "Score": 10, 
+                    "Notes": f"📄 {f.name}", 
+                    "AI_Summary": ai_summary, 
+                    "Raw_Content": raw_extracted
+                })
+                
+            if skipped: st.warning(f"Skipped duplicate records already logged: {', '.join(skipped)}")
             st.success("🎉 Repository file logs indexed successfully!")
             time.sleep(0.5)
             st.rerun()
@@ -401,7 +610,8 @@ with tab1:
             with st.expander("📂 Click to view original raw file text"):
                 st.text_area("Original Content Stream", value=str(row.get("Raw_Content", "")), height=200, disabled=True, key=f"raw_h_{row_id}")
             if st.button("🗑️ Delete this record", key=f"delete_h_{row_id}"):
-                delete_row(row_id, "Health"); st.rerun()
+                delete_row(row_id, "Health")
+                st.rerun()
             st.markdown('</div>', unsafe_allow_html=True)
 
 # ==========================================
@@ -417,11 +627,14 @@ with tab2:
         if valid_contents:
             with st.spinner("Scanning data vectors from all stacked knowledge modules..."):
                 prompt = f"""You are an elite productivity strategist working for Animesh. Review the complete text content extracted from ALL books, articles, and learning assets stored inside his master knowledge bank. Pull distinct, highly varied execution blueprints from across the different documents.
-Organize your output into 4-6 visually appealing, highly sharp category frameworks (e.g., 'Cognitive Strategy & Decision Maps', 'Operational Speed & Leverage Rules'). Under each category header, list concrete, high-impact bulleted pointers covering a wide variety of topics.
+
+Organize your output into 4-6 visually appealing, highly sharp category frameworks (e.g., 'Cognitive Strategy & Decision Maps', 'Operational Speed & Leverage Rules'). Under each category header, list concrete, high-impact bulleted pointers covering a wide variety of topics from his uploads.
+
 Your complete output text grid must be exactly between 50 and 60 lines long total across all categories combined:
 {"\n\n".join(valid_contents)[:45000]}"""
                 st.session_state["l_master_rules"] = call_gemini_engine(prompt)
-        else: st.warning("No clean knowledge content matrix blocks found in history layers yet.")
+        else: 
+            st.warning("No clean knowledge content matrix blocks found in history layers yet.")
             
     if "l_master_rules" in st.session_state:
         st.info(st.session_state["l_master_rules"])
@@ -437,42 +650,76 @@ Your complete output text grid must be exactly between 50 and 60 lines long tota
         st.slider("Interaction & discussions with the right people", 1, 10, 7, key="tk_l4")
         st.slider("Develop good hobbies (singing, instrument, boxing etc.)", 1, 10, 7, key="tk_l5")
         
+    st.write("---")
     st.markdown("### 🧠 Continuous Self-Development Catalyst")
     st.markdown(f'<div class="quote-box">"{get_daily_content("learning_quotes")}"</div>', unsafe_allow_html=True)
     
+    st.write("---")
     st.markdown("### ⚡ Direct Book & Podcast Summary Injector")
-    inject_title = st.text_input("Enter Book or Podcast Title for On-the-Fly Injection:", placeholder="e.g., Principals by Ray Dalio")
+    voice_input_widget("inject_title", "voice_inject", label="🎤 Dictate Book/Podcast Name")
+    inject_title = st.text_area("Enter Book or Podcast Title for On-the-Fly Injection:", placeholder="e.g., Principals by Ray Dalio or Tim Ferriss Podcast with Naval Ravikant", key="inject_title")
+    
     if st.button("🚀 Process One-Click AI Summary Into Master Bank", use_container_width=True):
         if inject_title:
             with st.spinner(f"Synthesizing knowledge fields for '{inject_title}'..."):
-                prompt = f"Provide an intensive analysis detailing the central lessons, core concepts, and key strategic findings from the book or podcast titled '{inject_title}'. Format the response entirely as highly visual, high-impact bulleted pointers and actionable workflows customized for Animesh, an ambitious entrepreneur. Strictly 8-10 lines long total."
-                generated_insight = call_gemini_engine(prompt)
-                commit_new_log({"Timestamp": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S"), "Section": "Learning", "Score": 10, "Notes": f"📄 Book/Podcast Insight: {inject_title}", "AI_Summary": generated_insight, "Raw_Content": f"Native AI synthesis for: {inject_title}"})
-                st.success(f"🎉 Successfully injected '{inject_title}'!")
+                knowledge_prompt = f"Provide an intensive analysis detailing the central lessons, core concepts, and key strategic findings from the book or podcast titled '{inject_title}'. Format the response entirely as highly visual, high-impact bulleted pointers and actionable workflows customized for Animesh, an ambitious entrepreneur. Your complete output text block must be strictly between 8 and 10 lines long total:"
+                generated_insight = call_gemini_engine(knowledge_prompt)
+                
+                timestamp = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S")
+                commit_new_log({
+                    "Timestamp": timestamp,
+                    "Section": "Learning",
+                    "Score": 10,
+                    "Notes": f"📄 Book/Podcast Insight: {inject_title}",
+                    "AI_Summary": generated_insight,
+                    "Raw_Content": f"Native AI synthesis for: {inject_title}"
+                })
+                st.success(f"🎉 Successfully injected '{inject_title}' into your Master Knowledge Bank!")
                 time.sleep(0.4)
                 st.rerun()
-
+        else:
+            st.warning("Please enter a valid asset title line first.")
+            
     st.write("---")
     st.markdown("### 📥 Bulk File Uploader Pipeline")
+    media_name = st.text_input("Source Batch Reference Title (e.g. Luxury Business Layouts Series):")
     uploaded_books = st.file_uploader("Drop books, essays or article texts in bulk:", type=["pdf", "docx", "xlsx", "txt", "png", "jpg"], accept_multiple_files=True, key="l_bulk")
+    
     if st.button("Inject Batch to Library Vault", use_container_width=True):
         if uploaded_books:
+            existing_names = get_existing_filenames("Learning")
+            skipped = []
             for b in uploaded_books:
-                b_bytes = b.getvalue()
+                if b.name in existing_names:
+                    skipped.append(b.name)
+                    continue
                 timestamp = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S")
-                save_file_to_github(b_bytes, f"library_{timestamp.replace(':','-')}_{b.name}")
+                b_bytes = b.getvalue()
                 
-                mime_type = "application/pdf" if b.name.endswith(".pdf") else ("image/jpeg" if b.name.endswith(".jpg") or b.name.endswith(".jpeg") else "image/png" if b.name.endswith(".png") else None)
-                if mime_type:
-                    ai_summary = call_gemini_engine("Provide a visually appealing summary structured strictly as high-impact bulleted pointers detailing the exact key findings of this document. Cover all central themes explicitly. Strictly 8-10 lines long.", file_bytes=b_bytes, mime_type=mime_type)
-                    single_book_text = f"[Multimodal File: {b.name}]"
-                else:
-                    single_book_text = extract_raw_text(b)
-                    prompt = f"Analyze the text. Provide a visually appealing summary structured strictly as high-impact bulleted pointers detailing the exact key findings. Cover central themes explicitly. Strictly 8-10 lines long:\n\n{single_book_text[:28000]}"
-                    ai_summary = call_gemini_engine(prompt)
+                with st.spinner(f"Extracting text parameters for: {b.name}..."):
+                    save_file_to_github(b_bytes, f"library_{media_name.replace(' ','_')}_{b.name}")
                     
-                commit_new_log({"Timestamp": timestamp, "Section": "Learning", "Score": 10, "Notes": f"📄 {b.name}", "AI_Summary": ai_summary, "Raw_Content": single_book_text})
-            st.success("🎉 Documents successfully isolated, analyzed, and synced!")
+                    mime_type = "application/pdf" if b.name.endswith(".pdf") else ("image/jpeg" if b.name.endswith(".jpg") or b.name.endswith(".jpeg") else "image/png" if b.name.endswith(".png") else None)
+                    
+                    if mime_type:
+                        ai_summary = call_gemini_engine("Provide a visually appealing summary structured strictly as high-impact bulleted pointers detailing the exact key findings of this document. Cover all central themes explicitly. Strictly 8-10 lines long.", file_bytes=b_bytes, mime_type=mime_type)
+                        single_book_text = f"[Multimodal File: {b.name}]"
+                    else:
+                        single_book_text = extract_raw_text(b)
+                        prompt = f"Analyze the text. Provide a visually appealing summary structured strictly as high-impact bulleted pointers detailing the exact key findings. Cover central themes explicitly. Strictly 8-10 lines long:\n\n{single_book_text[:28000]}"
+                        ai_summary = call_gemini_engine(prompt)
+                        
+                    commit_new_log({
+                        "Timestamp": timestamp, 
+                        "Section": "Learning", 
+                        "Score": 10, 
+                        "Notes": f"📄 {b.name} | Batch: {media_name}", 
+                        "AI_Summary": ai_summary, 
+                        "Raw_Content": single_book_text
+                    })
+                    
+            if skipped: st.warning(f"Skipped duplicates present in database layers: {', '.join(skipped)}")
+            st.success("🎉 All new documents successfully isolated, analyzed, and synced!")
             time.sleep(0.5)
             st.rerun()
 
@@ -483,12 +730,33 @@ Your complete output text grid must be exactly between 50 and 60 lines long tota
             st.markdown(f'<div class="file-card">', unsafe_allow_html=True)
             st.markdown(f"#### {str(row.get('Notes', 'Book File')).split('|')[0]}")
             st.caption(f"Archived on: {row['Timestamp']}")
-            st.markdown(str(row.get('AI_Summary', '')))
             
-            with st.expander("📂 Click to view raw file format (Text/Data)"):
-                st.text_area("Original Content Stream Viewer Panel", value=str(row.get("Raw_Content", "")), height=250, disabled=True, key=f"raw_l_{row_id}")
+            ai_sum = str(row.get('AI_Summary', ''))
+            raw_text = str(row.get("Raw_Content", ""))
+            is_corrupted = any(err in ai_sum.lower() for err in ["unable to compile", "ceiling met", "v1beta", "historical document", "engine error", "timeout", "connection", "status 404", "❌", "error"]) or ai_sum.strip() == ""
+            has_clean_raw = raw_text.strip() != "" and not any(err in raw_text.lower() for err in ["unable to compile", "connection refused", "engine error", "rejected the request"])
+
+            if is_corrupted:
+                st.warning("📋 Summary uncompiled due to historical error logs layout frames.")
+            else:
+                st.markdown(ai_sum)
+
+            if has_clean_raw:
+                btn_label = "✨ Generate Missing 8-10 Line Pointers Summary Now" if is_corrupted else "🔄 Regenerate summary into pointers"
+                if st.button(btn_label, key=f"repair_l_{row_id}"):
+                    with st.spinner("Extracting book content layers directly into high-impact pointers..."):
+                        repair_prompt = f"Analyze the text content of this document. Provide a clean, comprehensive content summary structured strictly as high-impact bulleted pointers detailing the exact key findings and what this specific document states. Focus on core lessons, strategy insights, and frameworks. Your entire output response must be strictly between 8 and 10 lines long total:\n\n{raw_text[:25000]}"
+                        regenerate_summary_for_row(row_id, "Learning", raw_text, repair_prompt)
+                    st.success("Summary generated and saved permanently!")
+                    time.sleep(0.5)
+                    st.rerun()
+                    
+                with st.expander("📂 Click to view original raw document text viewer"):
+                    st.text_area("Original Content Stream Viewer Panel", value=raw_text, height=250, disabled=True, key=f"raw_l_{row_id}")
+
             if st.button("🗑️ Delete this library card", key=f"delete_l_{row_id}"):
-                delete_row(row_id, "Learning"); st.rerun()
+                delete_row(row_id, "Learning")
+                st.rerun()
             st.markdown('</div>', unsafe_allow_html=True)
 
 # ==========================================
@@ -498,9 +766,9 @@ with tab3:
     st.header("🏢 Venture Strategy Dashboard")
     b_data = history_df[history_df["Section"] == "Business"]
     
-    # --- SUB SECTION 1: Business Snapshot ---
     st.markdown("### 📊 Active Ventures Snapshot")
     st.markdown("**(Life Agro, WellWorld Foods, Jiva Leathers, Khemka Woodcraft)**")
+    
     voice_input_widget("biz_snapshot", "voice_biz_snap", label="🎤 Dictate Business Updates / To-Do's")
     biz_snapshot = st.text_area("Update Business State & To-Do's:", key="biz_snapshot")
     biz_snap_file = st.file_uploader("Upload context (PDF, Word, Image):", type=["pdf", "docx", "jpg", "png", "txt"], key="b_snap_file")
@@ -509,57 +777,85 @@ with tab3:
         if biz_snapshot or biz_snap_file:
             with st.spinner("Generating expansion & long-term strategy suggestions..."):
                 prompt = f"Act as an elite strategy consultant for Animesh's businesses. Based on these updates, provide high-level AI suggestions on what more/better he could do to expand his businesses and long-term strategy suggestions for each.\nContext: {biz_snapshot}"
+                
                 file_bytes, mime = None, None
                 if biz_snap_file:
                     file_bytes = biz_snap_file.getvalue()
-                    mime = "application/pdf" if biz_snap_file.name.endswith(".pdf") else "image/jpeg" if "jpg" in biz_snap_file.name else None
-                    if not mime: prompt += f"\nFile Text: {extract_raw_text(biz_snap_file)[:10000]}"
+                    mime = "application/pdf" if biz_snap_file.name.endswith(".pdf") else "image/jpeg" if "jpg" in biz_snap_file.name else "image/png" if biz_snap_file.name.endswith("png") else None
+                    if not mime: 
+                        prompt += f"\nFile Text: {extract_raw_text(biz_snap_file)[:10000]}"
                 
                 ai_strat = call_gemini_engine(prompt, file_bytes=file_bytes, mime_type=mime)
-                commit_new_log({"Timestamp": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S"), "Section": "Business", "Score": 10, "Notes": "Business Snapshot Strategy", "AI_Summary": ai_strat, "Raw_Content": biz_snapshot})
+                commit_new_log({
+                    "Timestamp": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S"), 
+                    "Section": "Business", 
+                    "Score": 10, 
+                    "Notes": "Business Snapshot Strategy", 
+                    "AI_Summary": ai_strat, 
+                    "Raw_Content": biz_snapshot
+                })
                 st.success("Strategy generated!")
                 time.sleep(0.5)
                 st.rerun()
 
-    # --- SUB SECTION 2: Personal Advisor ---
+    st.write("---")
     st.markdown("### 🧠 AI Personal Advisor (Ideas & Strategies)")
     voice_input_widget("biz_advisor", "voice_biz_adv", label="🎤 Speak your ideas/thoughts")
     biz_advisor = st.text_area("Share ideas, thoughts, or strategies for feedback:", key="biz_advisor")
+    biz_adv_file = st.file_uploader("Upload context files (PDF, Word, Image):", type=["pdf", "docx", "jpg", "png", "txt"], key="b_adv_file")
+    
     if st.button("💡 Get Advisor Feedback", use_container_width=True):
-        if biz_advisor:
+        if biz_advisor or biz_adv_file:
             with st.spinner("Consulting advisor matrix..."):
-                prompt = f"Act as a world-class personal business advisor to Animesh. He has just shared this idea/strategy. Tell him what you think of it, what he could do to make it work, and how to execute it better:\n\n{biz_advisor}"
-                feedback = call_gemini_engine(prompt)
-                commit_new_log({"Timestamp": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S"), "Section": "Business", "Score": 10, "Notes": "Advisor Consultation", "AI_Summary": feedback, "Raw_Content": biz_advisor})
+                prompt = f"Act as a world-class personal business advisor to Animesh. He has just shared this idea/strategy. Tell him what you think of it, what he could do to make it work, and how to execute it better:\n\nText Idea: {biz_advisor}"
+                
+                file_bytes, mime = None, None
+                if biz_adv_file:
+                    file_bytes = biz_adv_file.getvalue()
+                    mime = "application/pdf" if biz_adv_file.name.endswith(".pdf") else "image/jpeg" if "jpg" in biz_adv_file.name else "image/png" if biz_adv_file.name.endswith("png") else None
+                    if not mime: 
+                        prompt += f"\nFile Context Text: {extract_raw_text(biz_adv_file)[:10000]}"
+                        
+                feedback = call_gemini_engine(prompt, file_bytes=file_bytes, mime_type=mime)
+                commit_new_log({
+                    "Timestamp": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S"), 
+                    "Section": "Business", 
+                    "Score": 10, 
+                    "Notes": "Advisor Consultation", 
+                    "AI_Summary": feedback, 
+                    "Raw_Content": biz_advisor
+                })
                 st.rerun()
 
-    # --- SUB SECTION 3: Progress Trackers ---
+    st.write("---")
     st.markdown("### 📈 Strategic Execution Trackers")
     col1, col2 = st.columns(2)
     with col1:
         st.slider("Deep work blocks everyday without phone", 1, 10, 7, key="tk_b1")
-        st.slider("Ideate & deep thinking everyday", 1, 10, 7, key="tk_b2")
+        st.slider("Ideate & deep thinking everyday (stocks, new biz)", 1, 10, 7, key="tk_b2")
     with col2:
         st.slider("Delegate daily execution tasks efficiently", 1, 10, 7, key="tk_b3")
         st.slider("Completing Things to Do diligently everyday", 1, 10, 7, key="tk_b4")
 
-    # --- SUB SECTION 4: Daily Quotes ---
     st.markdown("### 💼 Daily Professional Catalyst")
     st.markdown(f'<div class="quote-box">"{get_daily_content("biz_quotes")}"</div>', unsafe_allow_html=True)
 
-    # --- SUB SECTION 5: Vault ---
     st.write("---")
     st.markdown("### 📥 Venture Document Vault")
-    biz_docs = st.file_uploader("Upload engineering data, sheets, or invoices:", type=["xlsx", "csv", "pdf", "docx", "png"], accept_multiple_files=True, key="b_bulk")
+    biz_docs = st.file_uploader("Upload engineering data, sheets, or invoices:", type=["xlsx", "csv", "pdf", "docx", "png", "jpg"], accept_multiple_files=True, key="b_bulk")
+    
     if st.button("Archive Venture Metrics", use_container_width=True):
         if biz_docs:
+            existing_names = get_existing_filenames("Business")
             for bd in biz_docs:
+                if bd.name in existing_names: continue
                 timestamp = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S")
                 save_file_to_github(bd.getvalue(), f"biz_{timestamp.replace(':','-')}_{bd.name}")
+                
                 mime = "application/pdf" if bd.name.endswith(".pdf") else "image/jpeg" if "jpg" in bd.name else "image/png" if bd.name.endswith("png") else None
                 if mime:
                     ai_summary = call_gemini_engine("Provide a clean, deep-dive content summary detailing exactly what this document states. Focus on specifications and logistics. Strictly 8-10 lines long.", file_bytes=bd.getvalue(), mime_type=mime)
-                    single_doc_text = "[Multi-modal File]"
+                    single_doc_text = f"[Multi-modal File: {bd.name}]"
                 else:
                     single_doc_text = extract_raw_text(bd)
                     prompt = f"Provide a clean, deep-dive content summary detailing exactly what this document states. Strictly 8-10 lines long:\n\n{single_doc_text[:20000]}"
@@ -568,18 +864,62 @@ with tab3:
                 commit_new_log({"Timestamp": timestamp, "Section": "Business", "Score": 10, "Notes": f"📄 {bd.name}", "AI_Summary": ai_summary, "Raw_Content": single_doc_text})
             st.rerun()
 
+    st.write("### ⚡ Master Business Strategy Rules")
+    if st.button("✨ GENERATE 50-60 LINE STRATEGIC BLUEPRINT FROM ALL VENTURE FILES", use_container_width=True, key="gen_b_rules"):
+        valid_contents = [str(r['Raw_Content']) for _, r in b_data.iterrows() if not any(err in str(r['Raw_Content']).lower() for err in ["unable to compile", "connection refused", "engine error", "rejected the request"])]
+        if valid_contents:
+            combined_text = "\n\n".join(valid_contents)
+            with st.spinner(f"Compiling production directives from {len(valid_contents)} files..."):
+                prompt = f"""You are an elite strategy consultant working for Animesh across Life Agro, WellWorld Foods, Jiva Leathers, and Khemka Woodcraft. Review the FULL text content below from ALL venture documents. Pull the best, most varied strategic points from EACH document.
+
+Organize the output into 4-6 clearly labeled categories relevant to his ventures (for example: 'Export & Compliance', 'Manufacturing & Supply Chain', 'Design & Differentiation'). Under each category header, list specific, actionable rules.
+
+Your complete output must total between 50 and 60 lines across all categories combined:
+
+{combined_text[:50000]}"""
+                st.session_state["b_master_rules"] = call_gemini_engine(prompt)
+        else:
+            st.warning("No active corporate strategy text content files found in database archives yet.")
+            
+    if "b_master_rules" in st.session_state:
+        st.info(st.session_state["b_master_rules"])
+
     if not b_data.empty: 
-        st.write("### 📜 Corporate Summaries & Specifications:")
+        st.write("### 📜 Corporate Summaries & Specifications Feed:")
         for idx, (_, row) in enumerate(b_data.iloc[::-1].iterrows()):
-            row_id = str(row.get('RowID', '') or f"legacy_{row['Timestamp']}_{idx}")
+            ai_sum = str(row.get('AI_Summary', ''))
+            raw_text = str(row.get("Raw_Content", ""))
+            timestamp_str = str(row['Timestamp'])
+            row_id = str(row.get('RowID', '') or f"legacy_{timestamp_str}_{idx}")
+            title_slug = str(row.get('Notes', 'Venture File')).split('|')[0]
+            
+            is_corrupted = any(err in ai_sum.lower() for err in ["unable to compile", "ceiling met", "v1beta", "historical document", "engine error", "timeout", "connection", "status 404", "❌", "error"]) or ai_sum.strip() == ""
+            has_clean_raw = raw_text.strip() != "" and not any(err in raw_text.lower() for err in ["unable to compile", "connection refused", "engine error", "rejected the request"])
+            
             st.markdown(f'<div class="file-card">', unsafe_allow_html=True)
-            st.markdown(f"#### {str(row.get('Notes', 'Venture File')).split('|')[0]}")
-            st.caption(f"Entry Timestamp: {row['Timestamp']}")
-            st.markdown(str(row.get('AI_Summary', '')))
-            with st.expander("📂 Click to view original raw file text"):
-                st.text_area("Original File Contents", value=str(row.get("Raw_Content", "")), height=200, disabled=True, key=f"raw_b_{row_id}")
+            st.markdown(f"### {title_slug}")
+            st.caption(f"Entry Timestamp: {timestamp_str}")
+            
+            if is_corrupted:
+                st.warning("📋 Summary uncompiled due to a structural API connection block.")
+            else:
+                st.markdown(ai_sum)
+
+            if has_clean_raw:
+                btn_label = "✨ Generate Missing 8-10 Line Summary Now" if is_corrupted else "🔄 Regenerate this summary"
+                if st.button(btn_label, key=f"repair_b_{row_id}"):
+                    with st.spinner("Extracting blueprints from original text matrix..."):
+                        repair_prompt = f"Provide a clean, comprehensive 8-to-10 line deep-dive content summary detailing the key findings and exactly what this document states. Focus on manufacturing supply chains, parameters, and design execution specs. Your entire output response must be strictly between 8 and 10 lines long:\n\n{raw_text[:22000]}"
+                        regenerate_summary_for_row(row_id, "Business", raw_text, repair_prompt)
+                    st.success("Summary generated and saved permanently!")
+                    time.sleep(0.5)
+                    st.rerun()
+                with st.expander("📂 Click to view original raw file text"):
+                    st.text_area("Original File Contents", value=raw_text, height=200, disabled=True, key=f"raw_b_{row_id}")
+
             if st.button("🗑️ Delete this venture card", key=f"delete_b_{row_id}"):
-                delete_row(row_id, "Business"); st.rerun()
+                delete_row(row_id, "Business")
+                st.rerun()
             st.markdown('</div>', unsafe_allow_html=True)
 
 # ==========================================
@@ -588,7 +928,6 @@ with tab3:
 with tab4:
     st.header("🧘 Peace & Spiritual Shielding")
     
-    # --- SUB SECTION 1: Progress Trackers ---
     st.markdown("### 📈 Peace & Mindset Trackers")
     col1, col2 = st.columns(2)
     with col1:
@@ -601,7 +940,6 @@ with tab4:
         st.slider("Preserve energy, time & focus like treasures", 1, 10, 7, key="tk_p6")
         st.slider("Stay away from negative people & relatives", 1, 10, 7, key="tk_p7")
 
-    # --- SUB SECTION 2: Daily Techniques & Quotes ---
     st.markdown("### 🌌 Daily Spiritual Architecture")
     c1, c2, c3 = st.columns(3)
     with c1:
@@ -614,36 +952,45 @@ with tab4:
         st.markdown("**Manifestation**")
         st.markdown(f'<div class="quote-box" style="font-size:12px;">{get_daily_content("manifestation")}</div>', unsafe_allow_html=True)
 
-    # --- SUB SECTION 3: Spiritual Guru (Krishna) ---
     st.write("---")
     st.markdown("### 🦚 Divine Counsel (Krishna)")
     voice_input_widget("guru_peace", "voice_guru_p", label="🎤 Speak to Krishna")
     guru_input = st.text_area("Express your feelings, doubts, or grievances here:", key="guru_peace")
+    guru_file = st.file_uploader("Upload context (Images, Letters, PDFs):", type=["pdf", "jpg", "png", "txt", "docx"], key="guru_p_file")
+    
     if st.button("Receive Divine Guidance", use_container_width=True):
-        if guru_input:
+        if guru_input or guru_file:
             with st.spinner("Seeking counsel..."):
                 prompt = f"Act as Lord Krishna from the Bhagavad Gita. Animesh is expressing his feelings/doubts: '{guru_input}'. Offer him deep, calming, spiritual suggestions on how to control his emotions, stay positive, and handle the situation in the best, most righteous manner. Speak with divine compassion and strategic wisdom."
-                guru_response = call_gemini_engine(prompt)
+                
+                file_bytes, mime = None, None
+                if guru_file:
+                    file_bytes = guru_file.getvalue()
+                    mime = "application/pdf" if guru_file.name.endswith(".pdf") else "image/jpeg" if "jpg" in guru_file.name else "image/png" if guru_file.name.endswith("png") else None
+                    if not mime: prompt += f"\nFile Context: {extract_raw_text(guru_file)[:10000]}"
+                
+                guru_response = call_gemini_engine(prompt, file_bytes=file_bytes, mime_type=mime)
                 commit_new_log({"Timestamp": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S"), "Section": "Peace", "Score": 10, "Notes": "Krishna Counsel", "AI_Summary": guru_response, "Raw_Content": guru_input})
                 st.rerun()
 
-    # --- SUB SECTION 4: Astrological Charts ---
     st.write("---")
     st.subheader("🌌 Astrological Chart Mapping & Remedies")
     astro_files = st.file_uploader("Upload Astrological Charts (PDF, Image, Text):", type=["pdf", "png", "jpg", "txt", "docx"], accept_multiple_files=True, key="a_bulk")
     if st.button("Execute Astro Alignment & Get Remedies", use_container_width=True):
         if astro_files:
+            existing_names = get_existing_filenames("Mindset")
             for af in astro_files:
+                if af.name in existing_names: continue
                 f_bytes = af.getvalue()
                 timestamp = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S")
                 save_file_to_github(f_bytes, f"astro_{timestamp.replace(':','-')}_{af.name}")
                 
                 mime = "application/pdf" if af.name.endswith(".pdf") else "image/jpeg" if "jpg" in af.name else "image/png" if af.name.endswith("png") else None
-                prompt = "Act as an expert Vedic Astrologer. Analyze this astrological chart data. Provide both a summarized and detailed view of predictions for short and long term. Crucially, offer specific advice and solutions (like gemstones to wear, specific daily rituals) to navigate this chart and maximize luck."
+                prompt = "Act as an expert Vedic Astrologer. Analyze this astrological chart data. Provide both a summarized and detailed view of predictions for short and long term. Crucially, offer specific advice and solutions (like gemstones to wear, specific daily rituals) to navigate this chart and maximize luck. Keep it strictly between 8 and 10 lines long."
                 
                 if mime:
                     ai_summary = call_gemini_engine(prompt, file_bytes=f_bytes, mime_type=mime)
-                    raw_text = "[Visual Astrological Chart]"
+                    raw_text = f"[Visual Astrological Chart: {af.name}]"
                 else:
                     raw_text = extract_raw_text(af)
                     ai_summary = call_gemini_engine(prompt + f"\n\nData:\n{raw_text[:15000]}")
@@ -651,7 +998,6 @@ with tab4:
                 commit_new_log({"Timestamp": timestamp, "Section": "Mindset", "Score": 10, "Notes": f"📄 {af.name} | Astro Analysis", "AI_Summary": ai_summary, "Raw_Content": raw_text})
             st.rerun()
 
-    # Display Peace/Mindset History
     m_data = history_df[history_df["Section"].isin(["Peace", "Mindset"])]
     if not m_data.empty:
         st.write("### 🌌 Active Spiritual & Astro Logs:")
@@ -676,7 +1022,6 @@ with tab4:
 with tab5:
     st.header("🤝 Interpersonal Network Alignment")
     
-    # --- SUB SECTION 1: Progress Trackers ---
     st.markdown("### 📈 Relationship Trackers")
     col1, col2 = st.columns(2)
     with col1:
@@ -686,16 +1031,24 @@ with tab5:
         st.slider("Less reactive & more calm", 1, 10, 7, key="tk_r3")
         st.slider("Manifestation for better relationships", 1, 10, 7, key="tk_r4")
         
-    # --- SUB SECTION 2: Spiritual Guru (Krishna) for Relationships ---
     st.write("---")
     st.markdown("### 🦚 Divine Counsel for Relationships (Krishna)")
     voice_input_widget("guru_rel", "voice_guru_r", label="🎤 Speak to Krishna about Relationships")
     rel_input = st.text_area("Express relationship doubts, moods, or grievances here:", key="guru_rel")
+    rel_file = st.file_uploader("Upload context (Screenshots, Texts):", type=["pdf", "png", "jpg", "txt", "docx"], key="guru_r_file")
+    
     if st.button("Seek Relationship Guidance", use_container_width=True):
-        if rel_input:
+        if rel_input or rel_file:
             with st.spinner("Seeking counsel..."):
                 prompt = f"Act as Lord Krishna. Animesh is expressing feelings about his relationships: '{rel_input}'. Offer him deep, calming suggestions on how to handle the situation in the best manner, stay calm, and resolve conflicts with love and wisdom."
-                guru_response = call_gemini_engine(prompt)
+                
+                file_bytes, mime = None, None
+                if rel_file:
+                    file_bytes = rel_file.getvalue()
+                    mime = "application/pdf" if rel_file.name.endswith(".pdf") else "image/jpeg" if "jpg" in rel_file.name else "image/png" if rel_file.name.endswith("png") else None
+                    if not mime: prompt += f"\nContext File: {extract_raw_text(rel_file)[:10000]}"
+                
+                guru_response = call_gemini_engine(prompt, file_bytes=file_bytes, mime_type=mime)
                 commit_new_log({"Timestamp": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S"), "Section": "Relationships", "Score": 10, "Notes": "Krishna Counsel (Rel)", "AI_Summary": guru_response, "Raw_Content": rel_input})
                 st.rerun()
 
@@ -720,7 +1073,6 @@ with tab5:
 with tab6:
     st.header("📉 Financial Intelligence Terminal")
     
-    # --- SUB SECTION 1: Indian Market Update ---
     st.markdown("### 🇮🇳 Daily Market Snapshot & Recommendations")
     if st.button("☀️ Fetch Live Indian Market Update & Indicators", use_container_width=True):
         with st.spinner("Pulling global and Indian indicators..."):
@@ -731,14 +1083,14 @@ with tab6:
                 crude = yf.Ticker("CL=F").history(period="1d")['Close'].iloc[-1]
                 usdinr = yf.Ticker("INR=X").history(period="1d")['Close'].iloc[-1]
                 market_data = f"Nifty50: {nifty:.2f}, Sensex: {sensex:.2f}, Crude Oil: ${crude:.2f}, USD/INR: ₹{usdinr:.2f}"
-            except: market_data = "Market data pull limited. Rely on macro AI generation."
+            except: 
+                market_data = "Market data pull limited. Rely on macro AI generation."
             
             prompt = f"Provide a highly structured, visually appealing daily Indian equity market snapshot. Include key news/developments, macro analysis on global indicators (Crude, USD/INR, VIX, Geopolitics). Conclude with 2-3 specific stock investment recommendations based on technical/fundamental parameters, including exact rationale, expected return potential, and timeframe. Current data pull: {market_data}"
             ai_summary = call_gemini_engine(prompt)
             commit_new_log({"Timestamp": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S"), "Section": "Finance", "Score": 10, "Notes": "Daily Market Snapshot", "AI_Summary": ai_summary, "Raw_Content": market_data})
             st.rerun()
 
-    # --- SUB SECTION 2: Detailed Stock Research ---
     st.write("---")
     st.markdown("### 🔍 Deep Equity Research Tool")
     ticker = st.text_input("Enter NSE Ticker Symbol (e.g. RELIANCE.NS, TCS.NS) for Detailed Audit:")
@@ -756,14 +1108,15 @@ with tab6:
                 st.rerun()
             except Exception as err: st.error(f"Audit error: {err}")
 
-    # --- SUB SECTION 3: Portfolio Evaluation ---
     st.write("---")
     st.markdown("### 📋 Portfolio Structural Evaluation")
     port_files = st.file_uploader("Upload your portfolio (PDF, Excel, Word, Image) for Wealth Advisory:", type=["xlsx", "csv", "pdf", "docx", "png", "jpg"], accept_multiple_files=True, key="p_bulk")
     if st.button("Execute Portfolio Advisory & Risk Check", use_container_width=True):
         if port_files:
             timestamp = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S")
+            existing_names = get_existing_filenames("Finance")
             for pf in port_files:
+                if pf.name in existing_names: continue
                 save_file_to_github(pf.getvalue(), f"portfolio_{pf.name}")
                 
                 mime = "application/pdf" if pf.name.endswith(".pdf") else "image/jpeg" if "jpg" in pf.name else "image/png" if pf.name.endswith("png") else None
@@ -771,7 +1124,7 @@ with tab6:
                 
                 if mime:
                     ai_summary = call_gemini_engine(prompt, file_bytes=pf.getvalue(), mime_type=mime)
-                    single_sheet_text = "[Multi-modal Portfolio]"
+                    single_sheet_text = f"[Multi-modal Portfolio: {pf.name}]"
                 else:
                     single_sheet_text = extract_raw_text(pf)
                     ai_summary = call_gemini_engine(prompt + f"\n\nData:\n{single_sheet_text[:15000]}")
@@ -802,18 +1155,15 @@ with tab6:
 with tab7:
     st.header("🚀 Strategic Goal Vectoring")
     
-    # --- SUB SECTION 1: Progress Trackers ---
     st.markdown("### 📈 Goal Execution Trackers")
     col1, col2, col3 = st.columns(3)
     with col1: st.slider("Short-Term Goals (0-6 Months)", 1, 10, 5, key="tk_g1")
     with col2: st.slider("Medium-Term Goals (6-24 Months)", 1, 10, 5, key="tk_g2")
     with col3: st.slider("Long-Term Goals (2-10 Years)", 1, 10, 5, key="tk_g3")
 
-    # --- SUB SECTION 2: Daily Quotes ---
     st.markdown("### 🌌 Execution Catalyst")
     st.markdown(f'<div class="quote-box">"{get_daily_content("goals_quotes")}"</div>', unsafe_allow_html=True)
 
-    # --- SUB SECTION 3: Multi-modal Goal Input ---
     st.write("---")
     st.markdown("### 🎯 Define & Strategize Goals")
     voice_input_widget("vision_input", "voice_vision", label="🎤 Dictate your specific Goals")
@@ -821,25 +1171,26 @@ with tab7:
     goal_files = st.file_uploader("Upload Vision Boards / Docs (PDF, Word, Image):", type=["pdf", "docx", "png", "jpg"], accept_multiple_files=True, key="g_bulk")
     
     if st.button("Update Directives & Get AI Roadmap", use_container_width=True):
-        timestamp = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S")
-        with st.spinner("Synthesizing strategic execution roadmap..."):
-            prompt = f"The user is setting new short, medium, and long term goals: '{vision_input}'. Provide a highly structured, step-by-step AI recommendation roadmap on exactly how to achieve these goals."
-            
-            if goal_files:
-                for gf in goal_files:
-                    mime = "application/pdf" if gf.name.endswith(".pdf") else "image/jpeg" if "jpg" in gf.name else "image/png" if gf.name.endswith("png") else None
-                    if mime:
-                        ai_summary = call_gemini_engine(prompt + " Take this attached vision board/document into account.", file_bytes=gf.getvalue(), mime_type=mime)
-                    else:
-                        ai_summary = call_gemini_engine(prompt + f"\nDocument Context: {extract_raw_text(gf)}")
-                    commit_new_log({"Timestamp": timestamp, "Section": "Goals", "Score": 10, "Notes": f"🎯 Goal Asset: {gf.name}", "AI_Summary": ai_summary, "Raw_Content": "[Goal File]"})
-            else:
-                ai_summary = call_gemini_engine(prompt)
-                commit_new_log({"Timestamp": timestamp, "Section": "Goals", "Score": 10, "Notes": "Visions updated.", "AI_Summary": ai_summary, "Raw_Content": vision_input})
+        if vision_input or goal_files:
+            timestamp = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S")
+            with st.spinner("Synthesizing strategic execution roadmap..."):
+                prompt = f"The user is setting new short, medium, and long term goals: '{vision_input}'. Provide a highly structured, step-by-step AI recommendation roadmap on exactly how to achieve these goals."
                 
-        st.success("🎉 Goal matrices locked in and AI roadmap generated!")
-        time.sleep(0.5)
-        st.rerun()
+                if goal_files:
+                    for gf in goal_files:
+                        mime = "application/pdf" if gf.name.endswith(".pdf") else "image/jpeg" if "jpg" in gf.name else "image/png" if gf.name.endswith("png") else None
+                        if mime:
+                            ai_summary = call_gemini_engine(prompt + " Take this attached vision board into account.", file_bytes=gf.getvalue(), mime_type=mime)
+                        else:
+                            ai_summary = call_gemini_engine(prompt + f"\nDocument Context: {extract_raw_text(gf)}")
+                        commit_new_log({"Timestamp": timestamp, "Section": "Goals", "Score": 10, "Notes": f"🎯 Goal Asset: {gf.name}", "AI_Summary": ai_summary, "Raw_Content": f"[Goal File: {gf.name}]"})
+                else:
+                    ai_summary = call_gemini_engine(prompt)
+                    commit_new_log({"Timestamp": timestamp, "Section": "Goals", "Score": 10, "Notes": "Visions updated.", "AI_Summary": ai_summary, "Raw_Content": vision_input})
+                    
+            st.success("🎉 Goal matrices locked in and AI roadmap generated!")
+            time.sleep(0.5)
+            st.rerun()
 
     g_data = history_df[history_df["Section"] == "Goals"]
     if not g_data.empty: 
@@ -849,7 +1200,7 @@ with tab7:
             st.markdown(f'<div class="file-card">', unsafe_allow_html=True)
             st.markdown(f"#### {str(row.get('Notes', 'Goal')).split('|')[0]}")
             st.markdown(str(row.get('AI_Summary', '')))
-            if st.button("🗑️ Delete Goal", key=f"delete_g_{row_id}"):
+            if st.button("🗑️ Delete Goal Roadmap", key=f"delete_g_{row_id}"):
                 delete_row(row_id, "Goals"); st.rerun()
             st.markdown('</div>', unsafe_allow_html=True)
 
