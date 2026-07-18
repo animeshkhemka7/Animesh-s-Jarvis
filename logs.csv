@@ -7596,16 +7596,15 @@ Before:
  Sit on bed
 After:
  3 lines of gratitude journaling",3c6c6ec91a204ecca1a76bc6ea41a354
-2026-07-18 04:56:39,Learning,10,📄 Motivational Podcasts_3.docx | Batch: ,"This document outlines a dual-framework for overcoming laziness and manifesting success through neuroscience. 
-To beat laziness, implement the ""9 Psychological Steps,"" which prioritize lowering barriers to entry, 
-building rituals over routines, and resetting dopamine receptors via a 24-hour detox. Use the 
-""5-Minute Rule"" and ""3-Minute Nightly Review"" to bypass resistance and maintain positive momentum. 
-For manifestation, the text argues that the brain is a ""prediction machine"" that only perceives 
-what it is wired to recognize. Therefore, you must align your identity with your goals, label 
-fears to neutralize them, and detach from outcomes to prevent cortisol-driven tunnel vision. 
-Practically, identify the feeling behind your goals, list evidence of your current worthiness, 
-and act from that emotional state to rewire your neuroplasticity. Finally, tone your vagus 
-nerve through grounding to enhance intuition and replace ""cheap"" dopamine with deep-work habits.","⭐
+2026-07-18 04:56:39,Learning,10,📄 Motivational Podcasts_3.docx | Batch: ,"❌ Gemini request failed. Diagnostic Log:
+[v1/gemini-1.5-pro]: HTTP 404 - {
+  ""error"": {
+    ""code"": 404,
+    ""message"": ""models/gemini-1.5-pro is not found for API version v1, or is not supported for generateContent. Call M
+[v1/gemini-pro]: HTTP 404 - {
+  ""error"": {
+    ""code"": 404,
+    ""message"": ""models/gemini-pro is not found for API version v1, or is not supported for generateContent. Call Model","⭐
  “If You’re Ambitious 
 But
  Lazy, Please Watch This…” — Full Detailed Summary
