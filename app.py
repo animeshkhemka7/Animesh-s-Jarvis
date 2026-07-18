@@ -10,6 +10,7 @@ import zipfile
 import xml.etree.ElementTree as ET
 from io import BytesIO
 from datetime import datetime
+from streamlit_mic_recorder import mic_recorder
 
 # ==========================================
 # 1. RESPONSIVE SHELL CONFIGURATION
@@ -73,6 +74,51 @@ def call_gemini_engine(prompt_text):
             continue
 
     return "❌ Gemini request failed on all models tried. Diagnostic Log:\n" + "\n".join(debug_logs)
+
+# ==========================================
+# ⚡ VOICE-TO-TEXT ENGINE (Gemini audio transcription)
+# ==========================================
+def transcribe_audio_with_gemini(audio_bytes):
+    if not API_KEY or not audio_bytes:
+        return None
+    audio_b64 = base64.b64encode(audio_bytes).decode("utf-8")
+    models_to_try = ['gemini-3.5-flash', 'gemini-3.1-flash-lite']
+    headers = {"Content-Type": "application/json"}
+    payload = {
+        "contents": [{
+            "parts": [
+                {"inline_data": {"mime_type": "audio/wav", "data": audio_b64}},
+                {"text": "Transcribe this audio recording verbatim into clean, well-punctuated text. Return ONLY the transcription itself, with no preamble, labels, or commentary."}
+            ]
+        }]
+    }
+    for model_name in models_to_try:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={API_KEY}"
+        try:
+            response = requests.post(url, headers=headers, json=payload, timeout=30)
+            if response.status_code == 200:
+                res_json = response.json()
+                return res_json['candidates'][0]['content']['parts'][0]['text'].strip()
+        except Exception:
+            continue
+    return None
+
+def voice_input_widget(target_session_key, widget_key, label="🎤 Record Voice Note"):
+    """Renders a record/stop mic button. On stop, transcribes via Gemini and
+    appends the text into the target text_area's session_state value, then
+    reruns so the text box shows it — the user can still edit before saving."""
+    audio = mic_recorder(start_prompt=label, stop_prompt="⏹️ Stop & Transcribe", just_once=True, use_container_width=True, key=widget_key)
+    if audio and audio.get('bytes'):
+        with st.spinner("Transcribing voice note via Gemini..."):
+            transcript = transcribe_audio_with_gemini(audio['bytes'])
+        if transcript:
+            existing = st.session_state.get(target_session_key, "")
+            st.session_state[target_session_key] = (existing.strip() + " " + transcript).strip() if existing else transcript
+            st.success("Voice note transcribed — review it below before saving.")
+            time.sleep(0.3)
+            st.rerun()
+        else:
+            st.warning("Could not transcribe that recording. Please try again or type manually.")
 
 # ==========================================
 # ⚡ NATIVE LOCAL FILE TEXT EXTRACTOR
@@ -206,7 +252,7 @@ def load_live_database_uncached():
 
             # Backfill missing/blank RowIDs so every row — including legacy rows
             # that share an identical Timestamp from a bulk upload — gets a
-            # genuinely unique key to update against.
+            # genuinely unique key to update or delete against.
             missing_id_mask = loaded_df["RowID"].isna() | (loaded_df["RowID"].astype(str).str.strip() == "")
             if missing_id_mask.any():
                 loaded_df.loc[missing_id_mask, "RowID"] = [uuid.uuid4().hex for _ in range(int(missing_id_mask.sum()))]
@@ -239,6 +285,33 @@ def regenerate_summary_for_row(row_id, section, raw_text, prompt_template):
         "AI_Summary"
     ] = resolved_summary
     sync_entire_db_to_github()
+
+def delete_row(row_id, section):
+    """Permanently removes exactly one entry (matched by RowID + Section) from
+    the log database and persists that removal to GitHub. Does not delete the
+    original file blob from the /vault folder in the repo — only the index
+    entry that makes it show up as a card in the app."""
+    st.session_state["cached_db"] = st.session_state["cached_db"][
+        ~((st.session_state["cached_db"]["RowID"] == row_id) & (st.session_state["cached_db"]["Section"] == section))
+    ].reset_index(drop=True)
+    sync_entire_db_to_github()
+
+def get_existing_filenames(section):
+    """Returns the set of filenames already logged in a given section, parsed
+    out of the Notes field (format: '📄 {filename} | ...'), so bulk uploads
+    can skip re-adding a file that's already present."""
+    if history_df.empty:
+        return set()
+    section_notes = history_df[history_df["Section"] == section]["Notes"].astype(str)
+    existing = set()
+    for note in section_notes:
+        if "📄" in note:
+            try:
+                fname = note.split("📄", 1)[1].split("|", 1)[0].strip()
+                existing.add(fname)
+            except Exception:
+                pass
+    return existing
 
 # ==========================================
 # MASTER DATA INITIALIZATION
@@ -313,15 +386,27 @@ with tab1:
                         st.rerun()
                     with st.expander("📂 Click to view original raw file text"):
                         st.text_area("Original Content Stream", value=raw_text, height=200, disabled=True, key=f"raw_h_{row_id}")
+
+                if st.button("🗑️ Delete this entry", key=f"delete_h_{row_id}"):
+                    delete_row(row_id, "Health")
+                    st.success("Entry deleted.")
+                    time.sleep(0.3)
+                    st.rerun()
                 st.markdown('</div>', unsafe_allow_html=True)
 
     h_score = st.slider("Rate physical health score today", 1, 10, 7, key="h_slider")
+    voice_input_widget("h_notes", "voice_h")
     h_input = st.text_area("Type lifestyle or workout notes:", key="h_notes")
     uploaded_files = st.file_uploader("Upload files/screenshots:", type=["pdf", "png", "jpg", "xlsx", "docx"], accept_multiple_files=True, key="h_bulk")
     
     if st.button("Permanently Save Health Data", use_container_width=True):
         if uploaded_files:
+            existing_names = get_existing_filenames("Health")
+            skipped = []
             for f in uploaded_files:
+                if f.name in existing_names:
+                    skipped.append(f.name)
+                    continue
                 timestamp = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S")
                 f_bytes = f.getvalue()
                 save_file_to_github(f_bytes, f"health_{timestamp.replace(' ','_').replace(':','-')}_{f.name}")
@@ -338,6 +423,8 @@ with tab1:
                     "AI_Summary": ai_summary,
                     "Raw_Content": single_file_text if single_file_text else h_input
                 })
+            if skipped:
+                st.warning(f"Skipped {len(skipped)} duplicate file(s) already logged here: {', '.join(skipped)}. Delete the existing card first if you want to re-process one.")
         else:
             timestamp = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S")
             commit_new_log({
@@ -363,15 +450,21 @@ with tab2:
         l_data = history_df[history_df["Section"] == "Learning"]
         st.metric(label="Total Library Assets Stacked", value=len(l_data))
         
-        # 🎯 STABLE 20-30 LINE MASTER RULES ENGINE
+        # 🎯 50-60 LINE GROUPED MASTER RULES ENGINE
         st.markdown("### ⚡ Master Life Implementation Sheet")
-        if st.button("✨ GENERATE 20-30 LINES TAILORMADE BLUEPRINT FROM ALL FILES", use_container_width=True, key="gen_l_rules"):
+        if st.button("✨ GENERATE 50-60 LINE TAILORMADE BLUEPRINT FROM ALL FILES", use_container_width=True, key="gen_l_rules"):
             valid_contents = [str(r['Raw_Content']) for _, r in l_data.iterrows() if not any(err in str(r['Raw_Content']).lower() for err in ["unable to compile", "ceiling met", "v1beta", "connection refused", "engine error", "timeout", "status 404", "rejected the request"])]
             
             if valid_contents:
                 combined_text = "\n\n".join(valid_contents)
                 with st.spinner(f"Compiling content from {len(valid_contents)} files across your library..."):
-                    prompt = f"You are an elite high-performance mentor. Review the full text content from all books and records in this library module. Synthesize a comprehensive list of customized, actionable execution rules and principles tailor-made for Animesh to improve his routine. Your complete output must be exactly between 20 and 30 lines long total, written as a direct high-impact list:\n\n{combined_text[:35000]}"
+                    prompt = f"""You are an elite high-performance mentor working for Animesh, an entrepreneur running Life Agro, WellWorld Foods, Jiva Leathers, and Khemka Woodcraft. Review the FULL text content below from ALL books and records in his library — there may be several distinct documents. Pull the best, most varied insights from EACH document, not just the first or most prominent one, so the final output genuinely represents the whole library rather than a single source.
+
+Organize the output into 4-6 clearly labeled categories relevant to his situation (for example: 'Mindset & Psychology', 'Execution & Discipline', 'Relationships & Influence', 'Decision-Making Under Pressure', 'Leadership & Delegation') — pick categories that actually fit the content present. Under each category header, list specific, actionable, tailor-made points.
+
+Your complete output must total between 50 and 60 lines across all categories combined. Prioritize variety — draw distinct points from as many different source documents as possible rather than concentrating on one:
+
+{combined_text[:50000]}"""
                     st.session_state["l_master_rules"] = call_gemini_engine(prompt)
             else:
                 st.warning("No clean book text fields found in your history log matrix yet. Upload a fresh document down below first!")
@@ -412,6 +505,12 @@ with tab2:
                         st.rerun()
                     with st.expander("📂 Click to view original raw file text"):
                         st.text_area("Original Extracted Content", value=raw_text, height=250, disabled=True, key=f"raw_l_{row_id}")
+
+                if st.button("🗑️ Delete this entry", key=f"delete_l_{row_id}"):
+                    delete_row(row_id, "Learning")
+                    st.success("Entry deleted.")
+                    time.sleep(0.3)
+                    st.rerun()
                 st.markdown('</div>', unsafe_allow_html=True)
         
     media_name = st.text_input("Source Batch Reference Title:")
@@ -419,7 +518,12 @@ with tab2:
     
     if st.button("Inject Batch to Library Vault", use_container_width=True):
         if uploaded_books:
+            existing_names = get_existing_filenames("Learning")
+            skipped = []
             for b in uploaded_books:
+                if b.name in existing_names:
+                    skipped.append(b.name)
+                    continue
                 timestamp = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S")
                 with st.spinner(f"Extracting text parameters for: {b.name}..."):
                     save_file_to_github(b.getvalue(), f"library_{media_name.replace(' ','_')}_{b.name}")
@@ -436,8 +540,9 @@ with tab2:
                         "AI_Summary": ai_summary,
                         "Raw_Content": single_book_text
                     })
-                    
-            st.success("🎉 All documents successfully isolated, analyzed, and synced!")
+            if skipped:
+                st.warning(f"Skipped {len(skipped)} duplicate file(s) already in your library: {', '.join(skipped)}. Delete the existing card first if you want to re-process one.")
+            st.success("🎉 All new documents successfully isolated, analyzed, and synced!")
             time.sleep(0.5)
             st.rerun()
 
@@ -451,12 +556,18 @@ with tab3:
         b_data = history_df[history_df["Section"] == "Business"]
         
         st.markdown("### ⚡ Master Business Strategy Rules")
-        if st.button("✨ GENERATE 20-30 LINES STRATEGIC BLUEPRINT FROM ALL VENTURE FILES", use_container_width=True, key="gen_b_rules"):
+        if st.button("✨ GENERATE 50-60 LINE STRATEGIC BLUEPRINT FROM ALL VENTURE FILES", use_container_width=True, key="gen_b_rules"):
             valid_contents = [str(r['Raw_Content']) for _, r in b_data.iterrows() if not any(err in str(r['Raw_Content']).lower() for err in ["unable to compile", "ceiling met", "v1beta", "connection refused", "engine error", "timeout", "status 404", "rejected the request"])]
             if valid_contents:
                 combined_text = "\n\n".join(valid_contents)
                 with st.spinner(f"Compiling production directives from {len(valid_contents)} files..."):
-                    prompt = f"Analyze my business operation metrics and data text layers completely. Synthesize a comprehensive list of precise strategic rules for global export compliance, distribution setups, and design utility features. Your complete output must be exactly between 20 and 30 lines long total, written as a clear bulleted checklist:\n\n{combined_text[:30000]}"
+                    prompt = f"""You are an elite strategy consultant working for Animesh across Life Agro (fortified rice kernels), WellWorld Foods (exports), Jiva Leathers (vegan leather/corporate gifting), and Khemka Woodcraft (timber import). Review the FULL text content below from ALL venture documents — there may be several distinct files. Pull the best, most varied strategic points from EACH document, not just one, so the output reflects the whole set rather than a single source.
+
+Organize the output into 4-6 clearly labeled categories relevant to his ventures (for example: 'Export & Compliance', 'Manufacturing & Supply Chain', 'Design & Differentiation', 'Distribution & Logistics', 'Brand & Positioning') — pick categories that actually fit the content present. Under each category header, list specific, actionable rules.
+
+Your complete output must total between 50 and 60 lines across all categories combined. Prioritize variety — draw distinct points from as many different source documents as possible rather than concentrating on one:
+
+{combined_text[:50000]}"""
                     st.session_state["b_master_rules"] = call_gemini_engine(prompt)
             else:
                 st.warning("No active corporate strategy text content files found in database archives yet.")
@@ -497,16 +608,28 @@ with tab3:
                         st.rerun()
                     with st.expander("📂 Click to view original raw file text"):
                         st.text_area("Original File Contents", value=raw_text, height=200, disabled=True, key=f"raw_b_{row_id}")
+
+                if st.button("🗑️ Delete this entry", key=f"delete_b_{row_id}"):
+                    delete_row(row_id, "Business")
+                    st.success("Entry deleted.")
+                    time.sleep(0.3)
+                    st.rerun()
                 st.markdown('</div>', unsafe_allow_html=True)
             
     biz_name = st.text_input("Venture Name:", value="Premium Vegan Leather Goods Brand")
     biz_score = st.slider("Current Execution Momentum", 1, 10, 7, key="b_slider")
-    biz_notes = st.text_area("Operational moves or bottlenecks:", value="Designing modular men's sling bags and phone card holders for export to North America, Europe, and Middle East. Differentiating utility from local competitors.")
+    voice_input_widget("biz_notes", "voice_biz")
+    biz_notes = st.text_area("Operational moves or bottlenecks:", value="Designing modular men's sling bags and phone card holders for export to North America, Europe, and Middle East. Differentiating utility from local competitors.", key="biz_notes")
     biz_docs = st.file_uploader("Upload engineering data sheets or invoices in bulk:", type=["xlsx", "csv", "pdf", "docx"], accept_multiple_files=True, key="b_bulk")
     
     if st.button("Analyze & Save Venture Metrics", use_container_width=True):
         if biz_docs:
+            existing_names = get_existing_filenames("Business")
+            skipped = []
             for bd in biz_docs:
+                if bd.name in existing_names:
+                    skipped.append(bd.name)
+                    continue
                 timestamp = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S")
                 with st.spinner(f"Analyzing specifications text layer for: {bd.name}..."):
                     save_file_to_github(bd.getvalue(), f"biz_{biz_name}_{bd.name}")
@@ -523,6 +646,8 @@ with tab3:
                         "AI_Summary": ai_summary,
                         "Raw_Content": single_doc_text
                     })
+            if skipped:
+                st.warning(f"Skipped {len(skipped)} duplicate file(s) already logged here: {', '.join(skipped)}. Delete the existing card first if you want to re-process one.")
         else:
             timestamp = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S")
             commit_new_log({
@@ -578,6 +703,12 @@ with tab4:
                         st.rerun()
                     with st.expander("📂 Click to view original raw file text"):
                         st.text_area("Original Content Stream", value=raw_text, height=200, disabled=True, key=f"raw_m_{row_id}")
+
+                if st.button("🗑️ Delete this entry", key=f"delete_m_{row_id}"):
+                    delete_row(row_id, "Mindset")
+                    st.success("Entry deleted.")
+                    time.sleep(0.3)
+                    st.rerun()
                 st.markdown('</div>', unsafe_allow_html=True)
 
     if st.button("Fetch Daily Meditation & Energy Shield Protocol", use_container_width=True):
@@ -598,7 +729,12 @@ with tab4:
     astro_files = st.file_uploader("Drop planetary maps/birth charts (Select Multiple):", type=["pdf", "png", "jpg"], accept_multiple_files=True, key="a_bulk")
     if st.button("Execute Astro Mapping Alignment", use_container_width=True):
         if astro_files:
+            existing_names = get_existing_filenames("Mindset")
+            skipped = []
             for af in astro_files:
+                if af.name in existing_names:
+                    skipped.append(af.name)
+                    continue
                 timestamp = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S")
                 save_file_to_github(af.getvalue(), f"astro_{af.name}")
                 single_chart_text = extract_raw_text(af)
@@ -614,6 +750,8 @@ with tab4:
                     "AI_Summary": ai_summary,
                     "Raw_Content": single_chart_text
                 })
+            if skipped:
+                st.warning(f"Skipped {len(skipped)} duplicate file(s) already logged here: {', '.join(skipped)}.")
             st.rerun()
 
 # ==========================================
@@ -633,7 +771,8 @@ with tab5:
                 st.write("---")
         
     r_score = st.slider("Rate relational harmony level", 1, 10, 7, key="r_slider")
-    r_notes = st.text_area("Key communication metrics or dynamics tracker:")
+    voice_input_widget("r_notes", "voice_r")
+    r_notes = st.text_area("Key communication metrics or dynamics tracker:", key="r_notes")
     if st.button("Archive Relationship Log Entry", use_container_width=True):
         commit_new_log({"Timestamp": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S"), "Section": "Relationships", "Score": r_score, "Notes": r_notes, "AI_Summary": "Manual Entry Recorded.", "Raw_Content": r_notes})
         st.success("🎉 Network logs compiled and safely synced!")
@@ -664,6 +803,12 @@ with tab6:
                 if raw_text.strip() != "" and not any(err in raw_text.lower() for err in ["unable to compile", "connection refused", "engine error", "rejected the request"]):
                     with st.expander("📂 Click to view original raw spreadsheet text"):
                         st.text_area("Spreadsheet Extracted Array", value=raw_text, height=200, disabled=True, key=f"raw_f_{row_id}")
+
+                if st.button("🗑️ Delete this entry", key=f"delete_f_{row_id}"):
+                    delete_row(row_id, "Finance")
+                    st.success("Entry deleted.")
+                    time.sleep(0.3)
+                    st.rerun()
                 st.markdown('</div>', unsafe_allow_html=True)
 
     if st.button("☀️ Pull Indian Pre-Market Framework Analysis", use_container_width=True):
@@ -713,7 +858,12 @@ with tab6:
     port_files = st.file_uploader("Drop broker spreadsheets/statements (Select Multiple):", type=["xlsx", "csv"], accept_multiple_files=True, key="p_bulk")
     if st.button("Execute Portfolio Audit Risk Check", use_container_width=True):
         if port_files:
+            existing_names = get_existing_filenames("Finance")
+            skipped = []
             for pf in port_files:
+                if pf.name in existing_names:
+                    skipped.append(pf.name)
+                    continue
                 timestamp = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S")
                 save_file_to_github(pf.getvalue(), f"portfolio_{pf.name}")
                 single_sheet_text = extract_raw_text(pf)
@@ -726,6 +876,8 @@ with tab6:
                     "AI_Summary": f"### Brokerage Log Sync Verified\nRaw statement text matrix for {pf.name} successfully registered to screen review frame layers.",
                     "Raw_Content": single_sheet_text
                 })
+            if skipped:
+                st.warning(f"Skipped {len(skipped)} duplicate file(s) already logged here: {', '.join(skipped)}.")
             st.success("🎉 Portfolio structural breakdown synced to server files successfully!")
             time.sleep(0.5)
             st.rerun()
@@ -747,7 +899,8 @@ with tab7:
                         st.markdown(row["AI_Summary"])
                 st.write("---")
         
-    vision_input = st.text_area("Define master 5 & 10-year blueprints:", value="Build a premier international sustainable design and luxury leather export empire with established corporate gifting logistics footprint across India.")
+    voice_input_widget("vision_input", "voice_vision")
+    vision_input = st.text_area("Define master 5 & 10-year blueprints:", value="Build a premier international sustainable design and luxury leather export empire with established corporate gifting logistics footprint across India.", key="vision_input")
     if st.button("Update Long-Term Directives", use_container_width=True):
         commit_new_log({"Timestamp": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S"), "Section": "Goals", "Score": 10, "Notes": "Visions updated.", "AI_Summary": f"### Master Blueprint Plan:\n{vision_input}", "Raw_Content": vision_input})
         st.success("🎉 Vision matrices locked in and synchronized globally!")
@@ -773,6 +926,7 @@ st.write("---")
 st.write("### 🗲 Universal Cross-Device Entry Pad")
 
 sync_section = st.selectbox("Assign log to module:", ["Business", "Learning", "Health", "Goals", "Relationships"], key="m_sec")
+voice_input_widget("m_notes", "voice_sync")
 sync_notes = st.text_area("Type updates, logs, or paste Google Drive asset links here:", placeholder="Example: Placed catalog design layout updates here. Link: https://drive.google.com/...", key="m_notes")
 sync_score = st.slider("Assign score status value:", 1, 10, 10, key="m_score")
 
