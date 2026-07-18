@@ -9,26 +9,6 @@ Timestamp,Section,Score,Notes,AI_Summary,Raw_Content,RowID
 2026-07-17 13:18,Learning,10,Batch: Books,,,c5265b0f2c9a449fa96a7a97758646a4
 2026-07-17 13:26,Learning,10,Batch: Books,,,e4f585fccb2e4939ab6f311806a428d3
 2026-07-17 14:33,Learning,10,Batch: Books,AI processing ceiling met. Payload successfully locked to vault.,,f7d86adf49064df683ea2dc5818a49ed
-2026-07-17 14:54,Learning,10,"Batch:  | Files: Arthashastra.docx, Chanakya's Chant.docx, Gita.docx, Give & Take - Adam Grant.docx, Lessons from Books - Summarised.docx, Lessons from Books.docx, Mahabharat For Me.docx, Modern Wisdom Ancient Roots.docx, The Magic of Thinking Big.docx","### Document Batch Saved Successfully
-Data files have been safely pushed to vault. Attached records: Arthashastra.docx, Chanakya's Chant.docx, Gita.docx, Give & Take - Adam Grant.docx, Lessons from Books - Summarised.docx, Lessons from Books.docx, Mahabharat For Me.docx, Modern Wisdom Ancient Roots.docx, The Magic of Thinking Big.docx","
---- Document: Arthashastra.docx ---
-[Text extraction note: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ModelService.ListModels to see the list of available models and their supported methods.]
---- Document: Chanakya's Chant.docx ---
-[Text extraction note: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ModelService.ListModels to see the list of available models and their supported methods.]
---- Document: Gita.docx ---
-[Text extraction note: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ModelService.ListModels to see the list of available models and their supported methods.]
---- Document: Give & Take - Adam Grant.docx ---
-[Text extraction note: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ModelService.ListModels to see the list of available models and their supported methods.]
---- Document: Lessons from Books - Summarised.docx ---
-[Text extraction note: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ModelService.ListModels to see the list of available models and their supported methods.]
---- Document: Lessons from Books.docx ---
-[Text extraction note: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ModelService.ListModels to see the list of available models and their supported methods.]
---- Document: Mahabharat For Me.docx ---
-[Text extraction note: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ModelService.ListModels to see the list of available models and their supported methods.]
---- Document: Modern Wisdom Ancient Roots.docx ---
-[Text extraction note: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ModelService.ListModels to see the list of available models and their supported methods.]
---- Document: The Magic of Thinking Big.docx ---
-[Text extraction note: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ModelService.ListModels to see the list of available models and their supported methods.]",6b1fdd97c93749d1ba1454d2fcd31ba7
 2026-07-18 03:46,Learning,10,📄 Arthashastra.docx | Batch: ,"The *Arthashastra* is a pragmatic manual on power, governance, and economics, asserting that wealth (Artha) is the essential foundation for morality and stability. Chanakya emphasizes that leadership is a duty to the public, where prosperity and welfare define a ruler’s success. The document mandates that leaders must assume human weakness, utilizing strict audits, surveillance, and clear systems to curb corruption. Financial prudence is paramount; leaders must prioritize revenue, maintain significant cash reserves, and avoid the risks of over-taxation. Strategic intelligence and meritocracy are presented as critical tools for maintaining control and outmaneuvering competition. Personal discipline is highlighted as the prerequisite for effective authority, cautioning that unchecked indulgence leads to systemic failure. The text argues that peace is best preserved through strength and diplomatic preparation rather than reliance on goodwill alone. Ultimately, the framework advocates for a ""founder-king"" mindset: prioritize survival, institutionalize processes over personalities, and base every decision on rigorous, information-led analysis.","Key Takeaways from 
 Arthashastra
  by Chanakya (Kautilya)
