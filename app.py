@@ -202,7 +202,7 @@ def get_daily_content(category):
     return content.get(category, [""])[day % len(content.get(category, [""]))]
 
 # ==========================================
-# ⚡ SAFE REST AI ENGINE (With improved timeout)
+# ⚡ SAFE REST AI ENGINE (Untouched Backend)
 # ==========================================
 def call_gemini_engine(prompt_text, file_bytes=None, mime_type=None):
     if not API_KEY:
@@ -229,17 +229,17 @@ def call_gemini_engine(prompt_text, file_bytes=None, mime_type=None):
         for model_name in models_to_scan:
             url = f"https://generativelanguage.googleapis.com/{version}/models/{model_name}:generateContent?key={API_KEY}"
             try:
-                response = requests.post(url, headers=headers, json=payload, timeout=50)
+                response = requests.post(url, headers=headers, json=payload, timeout=40)
                 if response.status_code == 200:
                     res_json = response.json()
                     return res_json['candidates'][0]['content']['parts'][0]['text']
                 else:
-                    debug_logs.append(f"[{version}/{model_name}]: HTTP {response.status_code}")
+                    debug_logs.append(f"[{version}/{model_name}]: HTTP {response.status_code} - {response.text[:150]}")
             except Exception as e:
-                debug_logs.append(f"[{version}/{model_name}]: Timeout/Error")
+                debug_logs.append(f"[{version}/{model_name}]: Exception - {str(e)[:150]}")
                 continue
 
-    return "❌ Gemini request failed. The API timed out or refused connection. Try again."
+    return "❌ Gemini request failed. Diagnostic Log:\n" + "\n".join(debug_logs[-2:])
 
 # ==========================================
 # ⚡ VOICE-TO-TEXT ENGINE
@@ -289,11 +289,14 @@ def voice_input_widget(target_session_key, widget_key, label="🎤 Record Voice 
 # ⚡ NATIVE LOCAL FILE TEXT EXTRACTOR
 # ==========================================
 def extract_raw_text(uploaded_file):
-    if uploaded_file is None: return ""
+    if uploaded_file is None:
+        return ""
     try:
         name = uploaded_file.name.lower()
         file_bytes = uploaded_file.getvalue()
-        if name.endswith(".txt"): return file_bytes.decode("utf-8", errors="ignore")
+        
+        if name.endswith(".txt"):
+            return file_bytes.decode("utf-8", errors="ignore")
         elif name.endswith(".docx"):
             wb_io = BytesIO(file_bytes)
             with zipfile.ZipFile(wb_io) as docx:
@@ -302,48 +305,61 @@ def extract_raw_text(uploaded_file):
                 ns = {'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'}
                 text_pieces = [node.text for node in root.findall('.//w:t', ns) if node.text]
                 return "\n".join(text_pieces)
-        elif name.endswith(".csv"): return pd.read_csv(BytesIO(file_bytes)).to_string()
-        elif name.endswith(".xlsx") or name.endswith(".xls"): return pd.read_excel(BytesIO(file_bytes)).to_string()
-        else: return f"[Binary File Uploaded: {uploaded_file.name}]"
-    except Exception as e: return f"[Text extraction note: {str(e)}]"
+        elif name.endswith(".csv"):
+            return pd.read_csv(BytesIO(file_bytes)).to_string()
+        elif name.endswith(".xlsx") or name.endswith(".xls"):
+            return pd.read_excel(BytesIO(file_bytes)).to_string()
+        else:
+            return f"[Binary File Uploaded: {uploaded_file.name}]"
+    except Exception as e:
+        return f"[Text extraction note: {str(e)}]"
 
 # ==========================================
 # ⚡ SECURE MULTI-DEVICE DATA LOCKER PIPELINE
 # ==========================================
 def save_file_to_github(file_bytes, filename, folder="vault"):
-    if not TOKEN or not REPO: return False
+    if not TOKEN or not REPO: 
+        return False
     path = f"{folder}/{filename}"
     url = f"https://api.github.com/repos/{REPO}/contents/{path}"
     headers = {"Authorization": f"token {TOKEN}", "Accept": "application/vnd.github.v3+json", "Cache-Control": "no-cache"}
     res = requests.get(url, headers=headers)
     sha = res.json().get("sha") if res.status_code == 200 else None
+    
     encoded_content = base64.b64encode(file_bytes).decode("utf-8")
     payload = {"message": f"Cloud Upload: {filename}", "content": encoded_content}
     if sha: payload["sha"] = sha
+        
     response = requests.put(url, headers=headers, json=payload)
     return response.status_code in [200, 201]
 
 def sync_entire_db_to_github():
-    if not TOKEN or not REPO: return False
+    if not TOKEN or not REPO: 
+        return False
     url = f"https://api.github.com/repos/{REPO}/contents/logs.csv"
     headers = {"Authorization": f"token {TOKEN}", "Accept": "application/vnd.github.v3+json", "Cache-Control": "no-cache"}
     res = requests.get(url, headers=headers)
     sha = res.json().get("sha") if res.status_code == 200 else None
+    
     df_to_save = st.session_state["cached_db"]
     encoded_content = base64.b64encode(df_to_save.to_csv(index=False).encode("utf-8")).decode("utf-8")
     payload = {"message": "Database Structural Optimization Event", "content": encoded_content, "sha": sha if sha else None}
+    
     response = requests.put(url, headers=headers, json=payload)
     return response.status_code in [200, 201]
 
 def log_row_to_csv(row_dict, filename="logs.csv"):
-    if not TOKEN or not REPO: return
+    if not TOKEN or not REPO: 
+        return
     url = f"https://api.github.com/repos/{REPO}/contents/{filename}?nocache={int(time.time())}"
     headers = {"Authorization": f"token {TOKEN}", "Accept": "application/vnd.github.v3+json", "Cache-Control": "no-cache"}
     res = requests.get(url, headers=headers)
     sha = None
+    
     if res.status_code == 200:
         sha = res.json().get("sha")
-        df = pd.read_csv(BytesIO(base64.b64decode(res.json().get("content")).decode("utf-8")))
+        # FIXED BUG: removed the .decode("utf-8") from inside BytesIO which caused the TypeError
+        df = pd.read_csv(BytesIO(base64.b64decode(res.json().get("content"))))
     else:
         df = pd.DataFrame(columns=["Timestamp", "Section", "Score", "Notes", "AI_Summary", "Raw_Content", "RowID"])
     
@@ -358,39 +374,48 @@ def log_row_to_csv(row_dict, filename="logs.csv"):
 def load_live_database_uncached():
     if not TOKEN or not REPO: 
         return pd.DataFrame(columns=["Timestamp", "Section", "Score", "Notes", "AI_Summary", "Raw_Content", "RowID"])
+        
     url = f"https://api.github.com/repos/{REPO}/contents/logs.csv?t={int(time.time())}"
     headers = {"Authorization": f"token {TOKEN}", "Accept": "application/vnd.github.v3+json", "Cache-Control": "no-cache"}
     try:
         res = requests.get(url, headers=headers)
         if res.status_code == 200:
-            loaded_df = pd.read_csv(BytesIO(base64.b64decode(res.json().get("content")).decode("utf-8")))
+            # FIXED BUG: removed the .decode("utf-8") from inside BytesIO
+            loaded_df = pd.read_csv(BytesIO(base64.b64decode(res.json().get("content"))))
+            
             if "AI_Summary" not in loaded_df.columns: loaded_df["AI_Summary"] = ""
             if "Raw_Content" not in loaded_df.columns: loaded_df["Raw_Content"] = ""
             if "RowID" not in loaded_df.columns: loaded_df["RowID"] = ""
+
             missing_id_mask = loaded_df["RowID"].isna() | (loaded_df["RowID"].astype(str).str.strip() == "")
             if missing_id_mask.any():
                 loaded_df.loc[missing_id_mask, "RowID"] = [uuid.uuid4().hex for _ in range(int(missing_id_mask.sum()))]
             return loaded_df
-    except: pass
+    except:
+        pass
     return pd.DataFrame(columns=["Timestamp", "Section", "Score", "Notes", "AI_Summary", "Raw_Content", "RowID"])
 
 def commit_new_log(row_dict):
     if "AI_Summary" not in row_dict: row_dict["AI_Summary"] = ""
     if "Raw_Content" not in row_dict: row_dict["Raw_Content"] = ""
     if not row_dict.get("RowID"): row_dict["RowID"] = uuid.uuid4().hex
-    if st.session_state["cached_db"].empty: st.session_state["cached_db"] = pd.DataFrame([row_dict])
-    else: st.session_state["cached_db"] = pd.concat([st.session_state["cached_db"], pd.DataFrame([row_dict])], ignore_index=True)
+        
+    if st.session_state["cached_db"].empty:
+        st.session_state["cached_db"] = pd.DataFrame([row_dict])
+    else:
+        st.session_state["cached_db"] = pd.concat([st.session_state["cached_db"], pd.DataFrame([row_dict])], ignore_index=True)
     log_row_to_csv(row_dict)
 
 def regenerate_summary_for_row(row_id, section, raw_text, prompt_template):
     resolved_summary = call_gemini_engine(prompt_template)
-    # Protection against silent fail loop: Do NOT save '❌' errors to the database
     if "❌" in resolved_summary:
         st.error(f"Failed to compile. The AI engine timed out or was overloaded. Please try again in a moment.")
         return False
-    
+        
     st.session_state["cached_db"].loc[
-        (st.session_state["cached_db"]["RowID"] == row_id) & (st.session_state["cached_db"]["Section"] == section), "AI_Summary"
+        (st.session_state["cached_db"]["RowID"] == row_id) &
+        (st.session_state["cached_db"]["Section"] == section),
+        "AI_Summary"
     ] = resolved_summary
     sync_entire_db_to_github()
     return True
@@ -447,7 +472,7 @@ with tab1:
     st.markdown("### 📋 Daily Fitness Core Protocol")
     st.markdown('<div class="tip-box">', unsafe_allow_html=True)
     st.markdown("""
-    **Follow these non-negotiable protocols daily:**
+    **Follow these 18 non-negotiable protocols daily:**
     * 💧 **Hydration Engine:** Drink at least 3-4 liters of water daily.
     * 🏃 **Daily Activity Target:** Commit to 20,000 steps daily.
     * 🛌 **Circadian Sleep Window:** Sleep strictly by 10 PM and wake at 5 AM.
@@ -499,10 +524,7 @@ with tab1:
                     p = [float(val.strip()) for val in parsed_res.split(",")]
                     timestamp = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S")
                     commit_new_log({
-                        "Timestamp": timestamp, 
-                        "Section": "Health_Stats", 
-                        "Score": p[0], 
-                        "Notes": f"Body Stats Update",
+                        "Timestamp": timestamp, "Section": "Health_Stats", "Score": p[0], "Notes": f"Body Stats Update",
                         "AI_Summary": f"### Body Stat Calibration:\n* **Weight:** {p[0]}kg (Target {p[1]}kg)\n* **Fat:** {p[2]}% (Target {p[3]}%)\n* **BMI:** {p[4]}",
                         "Raw_Content": f"{p[0]},{p[1]},{p[2]},{p[3]},{p[4]}"
                     })
@@ -520,12 +542,7 @@ with tab1:
             for _, r in stats_history.iterrows():
                 try:
                     vals = [float(v.strip()) for v in str(r["Raw_Content"]).split(",")]
-                    chart_entries.append({
-                        "Date": r["Timestamp"][:10], 
-                        "Weight": vals[0], "Target Weight": vals[1], 
-                        "Fat %": vals[2], "Target Fat %": vals[3], 
-                        "BMI": vals[4]
-                    })
+                    chart_entries.append({"Date": r["Timestamp"][:10], "Weight": vals[0], "Target Weight": vals[1], "Fat %": vals[2], "Target Fat %": vals[3], "BMI": vals[4]})
                 except: continue
             if chart_entries:
                 df_metrics = pd.DataFrame(chart_entries).set_index("Date")
@@ -560,15 +577,13 @@ with tab1:
                 mime_type = "application/pdf" if f.name.endswith(".pdf") else ("image/jpeg" if f.name.endswith(".jpg") or f.name.endswith(".jpeg") else "image/png" if f.name.endswith(".png") else None)
                 
                 if mime_type:
-                    ai_summary = call_gemini_engine("Provide a visually appealing summary. Format your ENTIRE response strictly as 8-10 crisp, actionable bullet points (using relevant emojis) detailing the key findings. Do not write paragraphs.", file_bytes=f_bytes, mime_type=mime_type)
+                    ai_summary = call_gemini_engine("Format your ENTIRE response strictly as 8-10 crisp, actionable bullet points (using emojis) detailing the exact key findings of this health document. Do not write paragraphs.", file_bytes=f_bytes, mime_type=mime_type)
                     raw_extracted = f"[Image/PDF Multi-modal File: {f.name}]"
                 else:
                     raw_extracted = extract_raw_text(f)
-                    ai_summary = call_gemini_engine(f"Provide a visually appealing summary. Format your ENTIRE response strictly as 8-10 crisp, actionable bullet points (using relevant emojis) detailing the key findings. Do not write paragraphs:\n\n{raw_extracted[:15000]}")
+                    ai_summary = call_gemini_engine(f"Format your ENTIRE response strictly as 8-10 crisp, actionable bullet points (using emojis) detailing the exact key findings. Do not write paragraphs:\n\n{raw_extracted[:15000]}")
                 
-                commit_new_log({
-                    "Timestamp": timestamp, "Section": "Health", "Score": 10, "Notes": f"📄 {f.name}", "AI_Summary": ai_summary, "Raw_Content": raw_extracted
-                })
+                commit_new_log({"Timestamp": timestamp, "Section": "Health", "Score": 10, "Notes": f"📄 {f.name}", "AI_Summary": ai_summary, "Raw_Content": raw_extracted})
                 
             if skipped: st.warning(f"Skipped duplicate records already logged: {', '.join(skipped)}")
             st.success("🎉 Repository file logs indexed successfully!")
@@ -599,7 +614,7 @@ with tab1:
                     btn_label = "✨ Generate Missing 8-10 Line Pointers Summary Now" if is_corrupted else "🔄 Regenerate summary into crisp pointers"
                     if st.button(btn_label, key=f"repair_h_{row_id}", type="primary" if is_corrupted else "secondary"):
                         with st.spinner("Extracting content metrics directly into crisp bullet points..."):
-                            repair_prompt = f"Provide a visually appealing summary. Format your ENTIRE response strictly as 8-10 crisp, actionable bullet points (using relevant emojis) detailing the exact key findings. Do not write paragraphs:\n\n{raw_text[:20000]}"
+                            repair_prompt = f"Format your ENTIRE response strictly as 8-10 crisp, actionable bullet points (using emojis) detailing the exact key findings. Do not write paragraphs:\n\n{raw_text[:20000]}"
                             success = regenerate_summary_for_row(row_id, "Health", raw_text, repair_prompt)
                         if success:
                             st.success("Summary generated and saved permanently!")
@@ -627,7 +642,7 @@ with tab2:
             with st.spinner("Scanning data vectors from all stacked knowledge modules..."):
                 prompt = f"""You are an elite productivity strategist working for Animesh. Review the complete text content extracted from ALL books, articles, and learning assets stored inside his master knowledge bank. Pull distinct, highly varied execution blueprints from across the different documents.
 
-Organize your output into 4-6 visually appealing, highly sharp category frameworks (e.g., 'Cognitive Strategy & Decision Maps', 'Operational Speed & Leverage Rules'). Under each category header, list concrete, high-impact bulleted pointers covering a wide variety of topics from his uploads.
+Organize your output into 4-6 visually appealing, highly sharp category frameworks (e.g., 'Cognitive Strategy & Decision Maps', 'Operational Speed & Leverage Rules'). Under each category header, list concrete, high-impact bulleted pointers.
 
 Format your ENTIRE response strictly as crisp, highly structured bullet points using emojis. Your complete output text grid must be exactly between 50 and 60 lines long total across all categories combined:
 {"\n\n".join(valid_contents)[:45000]}"""
@@ -661,18 +676,11 @@ Format your ENTIRE response strictly as crisp, highly structured bullet points u
     if st.button("🚀 Process One-Click AI Summary Into Master Bank", type="primary", use_container_width=True):
         if inject_title:
             with st.spinner(f"Synthesizing knowledge fields for '{inject_title}'..."):
-                knowledge_prompt = f"Provide an intensive analysis detailing the central lessons, core concepts, and key strategic findings from the book or podcast titled '{inject_title}'. Format the response ENTIRELY as highly visual, high-impact bulleted pointers (using emojis) and actionable workflows customized for Animesh, an ambitious entrepreneur. Strictly 8-10 lines long total."
+                knowledge_prompt = f"Provide an intensive analysis detailing the central lessons, core concepts, and key strategic findings from the book or podcast titled '{inject_title}'. Format your ENTIRE response strictly as 8-10 crisp, highly visual bulleted pointers (using emojis) customized for Animesh, an ambitious entrepreneur. Do not write paragraphs."
                 generated_insight = call_gemini_engine(knowledge_prompt)
                 
                 timestamp = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S")
-                commit_new_log({
-                    "Timestamp": timestamp,
-                    "Section": "Learning",
-                    "Score": 10,
-                    "Notes": f"📄 Book/Podcast Insight: {inject_title}",
-                    "AI_Summary": generated_insight,
-                    "Raw_Content": f"Native AI synthesis for: {inject_title}"
-                })
+                commit_new_log({"Timestamp": timestamp, "Section": "Learning", "Score": 10, "Notes": f"📄 Book/Podcast Insight: {inject_title}", "AI_Summary": generated_insight, "Raw_Content": f"Native AI synthesis for: {inject_title}"})
                 st.success(f"🎉 Successfully injected '{inject_title}' into your Master Knowledge Bank!")
                 time.sleep(0.4)
                 st.rerun()
@@ -700,16 +708,14 @@ Format your ENTIRE response strictly as crisp, highly structured bullet points u
                     mime_type = "application/pdf" if b.name.endswith(".pdf") else ("image/jpeg" if b.name.endswith(".jpg") or b.name.endswith(".jpeg") else "image/png" if b.name.endswith(".png") else None)
                     
                     if mime_type:
-                        ai_summary = call_gemini_engine("Provide a visually appealing summary. Format your ENTIRE response strictly as 8-10 crisp, actionable bullet points (using emojis) detailing the exact key findings of this document. Cover all central themes explicitly.", file_bytes=b_bytes, mime_type=mime_type)
+                        ai_summary = call_gemini_engine("Format your ENTIRE response strictly as 8-10 crisp, actionable bullet points (using emojis) detailing the exact key findings of this document. Cover all central themes explicitly. Do not write paragraphs.", file_bytes=b_bytes, mime_type=mime_type)
                         single_book_text = f"[Multimodal File: {b.name}]"
                     else:
                         single_book_text = extract_raw_text(b)
-                        prompt = f"Analyze the text. Provide a visually appealing summary. Format your ENTIRE response strictly as 8-10 crisp, actionable bullet points (using emojis) detailing the exact key findings. Cover central themes explicitly:\n\n{single_book_text[:28000]}"
+                        prompt = f"Format your ENTIRE response strictly as 8-10 crisp, actionable bullet points (using emojis) detailing the exact key findings. Cover central themes explicitly. Do not write paragraphs:\n\n{single_book_text[:28000]}"
                         ai_summary = call_gemini_engine(prompt)
                         
-                    commit_new_log({
-                        "Timestamp": timestamp, "Section": "Learning", "Score": 10, "Notes": f"📄 {b.name} | Batch: {media_name}", "AI_Summary": ai_summary, "Raw_Content": single_book_text
-                    })
+                    commit_new_log({"Timestamp": timestamp, "Section": "Learning", "Score": 10, "Notes": f"📄 {b.name} | Batch: {media_name}", "AI_Summary": ai_summary, "Raw_Content": single_book_text})
                     
             if skipped: st.warning(f"Skipped duplicates present in database layers: {', '.join(skipped)}")
             st.success("🎉 All new documents successfully isolated, analyzed, and synced!")
@@ -740,7 +746,7 @@ Format your ENTIRE response strictly as crisp, highly structured bullet points u
                     btn_label = "✨ Generate Missing 8-10 Line Pointers Summary Now" if is_corrupted else "🔄 Regenerate summary into crisp pointers"
                     if st.button(btn_label, key=f"repair_l_{row_id}", type="primary" if is_corrupted else "secondary"):
                         with st.spinner("Extracting book content layers directly into high-impact pointers..."):
-                            repair_prompt = f"Analyze the text content of this document. Provide a clean, comprehensive content summary. Format your ENTIRE response strictly as 8-10 crisp, actionable bullet points (using emojis) detailing the exact key findings and what this specific document states. Focus on core lessons, strategy insights, and frameworks. Do not use paragraphs:\n\n{raw_text[:25000]}"
+                            repair_prompt = f"Format your ENTIRE response strictly as 8-10 crisp, actionable bullet points (using emojis) detailing the exact key findings and what this specific document states. Focus on core lessons, strategy insights, and frameworks. Do not write paragraphs:\n\n{raw_text[:25000]}"
                             success = regenerate_summary_for_row(row_id, "Learning", raw_text, repair_prompt)
                         if success:
                             st.success("Summary generated and saved permanently!")
@@ -777,8 +783,7 @@ with tab3:
                 if biz_snap_file:
                     file_bytes = biz_snap_file.getvalue()
                     mime = "application/pdf" if biz_snap_file.name.endswith(".pdf") else "image/jpeg" if "jpg" in biz_snap_file.name else "image/png" if biz_snap_file.name.endswith("png") else None
-                    if not mime: 
-                        prompt += f"\nFile Text: {extract_raw_text(biz_snap_file)[:10000]}"
+                    if not mime: prompt += f"\nFile Text: {extract_raw_text(biz_snap_file)[:10000]}"
                 
                 ai_strat = call_gemini_engine(prompt, file_bytes=file_bytes, mime_type=mime)
                 commit_new_log({"Timestamp": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S"), "Section": "Business", "Score": 10, "Notes": "Business Snapshot Strategy", "AI_Summary": ai_strat, "Raw_Content": biz_snapshot})
@@ -801,8 +806,7 @@ with tab3:
                 if biz_adv_file:
                     file_bytes = biz_adv_file.getvalue()
                     mime = "application/pdf" if biz_adv_file.name.endswith(".pdf") else "image/jpeg" if "jpg" in biz_adv_file.name else "image/png" if biz_adv_file.name.endswith("png") else None
-                    if not mime: 
-                        prompt += f"\nFile Context Text: {extract_raw_text(biz_adv_file)[:10000]}"
+                    if not mime: prompt += f"\nFile Context Text: {extract_raw_text(biz_adv_file)[:10000]}"
                         
                 feedback = call_gemini_engine(prompt, file_bytes=file_bytes, mime_type=mime)
                 commit_new_log({"Timestamp": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S"), "Section": "Business", "Score": 10, "Notes": "Advisor Consultation", "AI_Summary": feedback, "Raw_Content": biz_advisor})
@@ -835,11 +839,11 @@ with tab3:
                 
                 mime = "application/pdf" if bd.name.endswith(".pdf") else "image/jpeg" if "jpg" in bd.name else "image/png" if bd.name.endswith("png") else None
                 if mime:
-                    ai_summary = call_gemini_engine("Provide a clean, deep-dive content summary. Format your ENTIRE response strictly as 8-10 crisp, actionable bullet points (using emojis) detailing exactly what this document states. Focus on specifications and logistics.", file_bytes=bd.getvalue(), mime_type=mime)
+                    ai_summary = call_gemini_engine("Format your ENTIRE response strictly as 8-10 crisp, actionable bullet points (using emojis) detailing exactly what this document states. Focus on specifications and logistics. Do not write paragraphs.", file_bytes=bd.getvalue(), mime_type=mime)
                     single_doc_text = f"[Multi-modal File: {bd.name}]"
                 else:
                     single_doc_text = extract_raw_text(bd)
-                    prompt = f"Provide a clean, deep-dive content summary. Format your ENTIRE response strictly as 8-10 crisp, actionable bullet points (using emojis) detailing exactly what this document states:\n\n{single_doc_text[:20000]}"
+                    prompt = f"Format your ENTIRE response strictly as 8-10 crisp, actionable bullet points (using emojis) detailing exactly what this document states. Do not write paragraphs:\n\n{single_doc_text[:20000]}"
                     ai_summary = call_gemini_engine(prompt)
                 
                 commit_new_log({"Timestamp": timestamp, "Section": "Business", "Score": 10, "Notes": f"📄 {bd.name}", "AI_Summary": ai_summary, "Raw_Content": single_doc_text})
@@ -889,7 +893,7 @@ Format your ENTIRE response strictly as crisp, highly structured bullet points u
                     btn_label = "✨ Generate Missing 8-10 Line Pointers Summary Now" if is_corrupted else "🔄 Regenerate summary into crisp pointers"
                     if st.button(btn_label, key=f"repair_b_{row_id}", type="primary" if is_corrupted else "secondary"):
                         with st.spinner("Extracting blueprints from original text matrix..."):
-                            repair_prompt = f"Provide a clean, comprehensive content summary. Format your ENTIRE response strictly as 8-10 crisp, actionable bullet points (using emojis) detailing the key findings and exactly what this document states. Focus on manufacturing supply chains, parameters, and design execution specs. Do not use paragraphs:\n\n{raw_text[:22000]}"
+                            repair_prompt = f"Format your ENTIRE response strictly as 8-10 crisp, actionable bullet points (using emojis) detailing the key findings and exactly what this document states. Focus on manufacturing supply chains, parameters, and design execution specs. Do not write paragraphs:\n\n{raw_text[:22000]}"
                             success = regenerate_summary_for_row(row_id, "Business", raw_text, repair_prompt)
                         if success:
                             st.success("Summary generated and saved permanently!")
@@ -966,7 +970,7 @@ with tab4:
                 save_file_to_github(f_bytes, f"astro_{timestamp.replace(':','-')}_{af.name}")
                 
                 mime = "application/pdf" if af.name.endswith(".pdf") else "image/jpeg" if "jpg" in af.name else "image/png" if af.name.endswith("png") else None
-                prompt = "Act as an expert Vedic Astrologer. Analyze this astrological chart data. Provide both a summarized and detailed view of predictions for short and long term. Crucially, offer specific advice and solutions (like gemstones to wear, specific daily rituals) to navigate this chart and maximize luck. Format your ENTIRE response strictly as 8-10 crisp, actionable bullet points."
+                prompt = "Act as an expert Vedic Astrologer. Analyze this astrological chart data. Provide both a summarized and detailed view of predictions for short and long term. Crucially, offer specific advice and solutions (like gemstones to wear, specific daily rituals) to navigate this chart and maximize luck. Format your ENTIRE response strictly as 8-10 crisp, actionable bullet points (using emojis)."
                 
                 if mime:
                     ai_summary = call_gemini_engine(prompt, file_bytes=f_bytes, mime_type=mime)
@@ -1005,7 +1009,7 @@ with tab4:
                         btn_label = "✨ Generate Missing 8-10 Line Pointers Summary Now" if is_corrupted else "🔄 Regenerate summary into crisp pointers"
                         if st.button(btn_label, key=f"repair_m_{row_id}", type="primary" if is_corrupted else "secondary"):
                             with st.spinner("Extracting coordinates into crisp bullet points..."):
-                                repair_prompt = f"Provide a clean, comprehensive summary. Format your ENTIRE response strictly as 8-10 crisp, actionable bullet points (using emojis) detailing the exact key findings and what this document states. Focus on alignment rules, remedies, and instructions. Do not use paragraphs:\n\n{raw_text[:20000]}"
+                                repair_prompt = f"Format your ENTIRE response strictly as 8-10 crisp, actionable bullet points (using emojis) detailing the exact key findings and what this document states. Focus on alignment rules, remedies, and instructions. Do not use paragraphs:\n\n{raw_text[:20000]}"
                                 success = regenerate_summary_for_row(row_id, row["Section"], raw_text, repair_prompt)
                             if success:
                                 st.success("Summary generated and saved permanently!")
@@ -1161,7 +1165,7 @@ with tab6:
                     btn_label = "✨ Generate Missing 8-10 Line Pointers Summary Now" if is_corrupted else "🔄 Regenerate summary into crisp pointers"
                     if st.button(btn_label, key=f"repair_f_{row_id}", type="primary" if is_corrupted else "secondary"):
                         with st.spinner("Extracting content metrics directly into crisp bullet points..."):
-                            repair_prompt = f"Provide a clean, comprehensive summary. Format your ENTIRE response strictly as 8-10 crisp, actionable bullet points (using emojis) detailing the exact key findings. Do not write paragraphs:\n\n{raw_text[:20000]}"
+                            repair_prompt = f"Format your ENTIRE response strictly as 8-10 crisp, actionable bullet points (using emojis) detailing the exact key findings. Do not write paragraphs:\n\n{raw_text[:20000]}"
                             success = regenerate_summary_for_row(row_id, "Finance", raw_text, repair_prompt)
                         if success:
                             st.success("Summary generated and saved permanently!")
