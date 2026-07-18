@@ -13,38 +13,52 @@ from datetime import datetime
 from streamlit_mic_recorder import mic_recorder
 
 # ==========================================
-# 1. RESPONSIVE SHELL CONFIGURATION (UX UPGRADED)
+# 1. RESPONSIVE SHELL & PREMIUM UI CONFIGURATION
 # ==========================================
-st.set_page_config(page_title="Khemka Life OS", page_icon="🎯", layout="centered", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="Khemka Life OS", page_icon="💎", layout="centered", initial_sidebar_state="collapsed")
 
-# Elite SaaS / Native Mobile App CSS Engine
 st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
-        /* Global Typography & Background */
+        /* Global Typography & App Background */
         html, body, [class*="css"] {
             font-family: 'Inter', sans-serif !important;
             color: #0F172A;
         }
         .stApp {
-            background-color: #F8FAFC;
+            background-color: #F8FAFC !important;
         }
-        #MainMenu {visibility: hidden;} footer {visibility: hidden;} header {visibility: hidden;}
-        .block-container {padding-top: 1rem; padding-bottom: 3rem;}
+        [data-testid="stHeader"] {
+            background-color: transparent !important;
+        }
         
+        #MainMenu {visibility: hidden;} footer {visibility: hidden;}
+        .block-container {padding-top: 1.5rem; padding-bottom: 4rem;}
+        
+        /* Premium Typography spacing */
+        h1, h2, h3, h4 {
+            color: #0F172A;
+            font-weight: 800 !important;
+            letter-spacing: -0.02em;
+        }
+        hr {
+            margin: 2.5rem 0;
+            border-color: #E2E8F0;
+        }
+
         /* Modern Pill-Shaped Tabs */
         .stTabs [data-baseweb="tab-list"] {
             gap: 8px;
             background-color: #E2E8F0;
-            padding: 8px;
-            border-radius: 16px;
+            padding: 6px;
+            border-radius: 12px;
             justify-content: center;
         }
         .stTabs [data-baseweb="tab"] {
             padding: 8px 16px;
             background-color: transparent;
-            border-radius: 12px;
+            border-radius: 8px;
             font-size: 13px;
             font-weight: 600;
             color: #64748B;
@@ -57,87 +71,79 @@ st.markdown("""
             box-shadow: 0 2px 4px rgba(0,0,0,0.05);
         }
 
-        /* Buttons & Inputs */
-        .stButton>button {
-            border-radius: 12px; 
-            height: 3.2em; 
-            font-weight: 600;
+        /* Premium Buttons */
+        [data-testid="baseButton-primary"] {
+            background-color: #0F172A !important;
+            color: #FFFFFF !important;
+            border: none !important;
+            border-radius: 8px !important;
+            font-weight: 600 !important;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1) !important;
             transition: all 0.2s ease;
-            border: 1px solid #CBD5E1;
-            background-color: #FFFFFF;
         }
-        .stButton>button:hover {
-            border-color: #3B82F6;
-            color: #3B82F6;
+        [data-testid="baseButton-primary"]:hover {
+            background-color: #1E293B !important;
             transform: translateY(-1px);
-            box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.1);
         }
-        .sync-btn>div>button {
-            background-color: #10B981 !important; 
-            color: white !important; 
-            border: none;
-            box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.2);
+        [data-testid="baseButton-secondary"] {
+            border-radius: 8px !important;
+            border: 1px solid #CBD5E1 !important;
+            color: #0F172A !important;
+            background-color: #FFFFFF !important;
+            font-weight: 600 !important;
+            transition: all 0.2s ease;
         }
-        .sync-btn>div>button:hover {
-            background-color: #059669 !important;
-            color: white !important;
+        [data-testid="baseButton-secondary"]:hover {
+            border-color: #94A3B8 !important;
+            background-color: #F8FAFC !important;
+            transform: translateY(-1px);
         }
 
-        /* Beautiful Floating UI Cards */
-        .file-card {
-            background-color: #FFFFFF; 
-            border: 1px solid #E2E8F0; 
-            border-radius: 16px; 
-            padding: 1.5rem; 
-            margin-bottom: 1.5rem;
-            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.03), 0 2px 4px -1px rgba(0,0,0,0.02);
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        /* Beautiful Native Streamlit Cards */
+        [data-testid="stVerticalBlockBorderWrapper"] {
+            border-radius: 16px !important;
+            border: 1px solid #E2E8F0 !important;
+            background-color: #FFFFFF !important;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02), 0 2px 4px -1px rgba(0,0,0,0.02) !important;
+            padding: 1.5rem !important;
+            transition: all 0.2s ease-in-out;
         }
-        .file-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05), 0 4px 6px -2px rgba(0,0,0,0.03);
+        [data-testid="stVerticalBlockBorderWrapper"]:hover {
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05) !important;
+            border-color: #CBD5E1 !important;
         }
 
         /* Callout Boxes */
         .tip-box {
             background: linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%);
             border-left: 5px solid #10B981;
-            padding: 1.2rem;
+            padding: 1.5rem;
             border-radius: 12px;
             margin-bottom: 1.5rem;
             box-shadow: 0 2px 4px rgba(0,0,0,0.02);
             color: #064E3B;
+            font-size: 14.5px;
+            line-height: 1.6;
         }
         .quote-box {
-            background: linear-gradient(135deg, #F1F5F9 0%, #E2E8F0 100%);
-            border-left: 5px solid #64748B;
-            padding: 1.2rem;
+            background: linear-gradient(120deg, #1E293B 0%, #0F172A 100%);
+            color: #F8FAFC;
+            padding: 1.5rem;
             border-radius: 12px;
             margin-bottom: 1.5rem;
             font-style: italic;
             font-weight: 500;
-            color: #334155;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+            font-size: 15px;
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
         }
         .guru-box {
-            background: linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%);
+            background: linear-gradient(120deg, #FFFBEB 0%, #FEF3C7 100%);
             border-left: 5px solid #F59E0B;
-            padding: 1.2rem;
+            padding: 1.5rem;
             border-radius: 12px;
             margin-bottom: 1.5rem;
             color: #78350F;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
-        }
-
-        /* Typography spacing */
-        h1, h2, h3, h4 {
-            color: #0F172A;
-            font-weight: 700 !important;
-            letter-spacing: -0.02em;
-        }
-        hr {
-            margin: 2rem 0;
-            border-color: #E2E8F0;
+            box-shadow: 0 4px 6px rgba(251, 191, 36, 0.1);
         }
     </style>
 """, unsafe_allow_html=True)
@@ -196,7 +202,7 @@ def get_daily_content(category):
     return content.get(category, [""])[day % len(content.get(category, [""]))]
 
 # ==========================================
-# ⚡ SAFE REST AI ENGINE (Untouched Backend)
+# ⚡ SAFE REST AI ENGINE (With improved timeout)
 # ==========================================
 def call_gemini_engine(prompt_text, file_bytes=None, mime_type=None):
     if not API_KEY:
@@ -223,17 +229,17 @@ def call_gemini_engine(prompt_text, file_bytes=None, mime_type=None):
         for model_name in models_to_scan:
             url = f"https://generativelanguage.googleapis.com/{version}/models/{model_name}:generateContent?key={API_KEY}"
             try:
-                response = requests.post(url, headers=headers, json=payload, timeout=40)
+                response = requests.post(url, headers=headers, json=payload, timeout=50)
                 if response.status_code == 200:
                     res_json = response.json()
                     return res_json['candidates'][0]['content']['parts'][0]['text']
                 else:
-                    debug_logs.append(f"[{version}/{model_name}]: HTTP {response.status_code} - {response.text[:150]}")
+                    debug_logs.append(f"[{version}/{model_name}]: HTTP {response.status_code}")
             except Exception as e:
-                debug_logs.append(f"[{version}/{model_name}]: Exception - {str(e)[:150]}")
+                debug_logs.append(f"[{version}/{model_name}]: Timeout/Error")
                 continue
 
-    return "❌ Gemini request failed. Diagnostic Log:\n" + "\n".join(debug_logs[-2:])
+    return "❌ Gemini request failed. The API timed out or refused connection. Try again."
 
 # ==========================================
 # ⚡ VOICE-TO-TEXT ENGINE
@@ -283,14 +289,11 @@ def voice_input_widget(target_session_key, widget_key, label="🎤 Record Voice 
 # ⚡ NATIVE LOCAL FILE TEXT EXTRACTOR
 # ==========================================
 def extract_raw_text(uploaded_file):
-    if uploaded_file is None:
-        return ""
+    if uploaded_file is None: return ""
     try:
         name = uploaded_file.name.lower()
         file_bytes = uploaded_file.getvalue()
-        
-        if name.endswith(".txt"):
-            return file_bytes.decode("utf-8", errors="ignore")
+        if name.endswith(".txt"): return file_bytes.decode("utf-8", errors="ignore")
         elif name.endswith(".docx"):
             wb_io = BytesIO(file_bytes)
             with zipfile.ZipFile(wb_io) as docx:
@@ -299,62 +302,48 @@ def extract_raw_text(uploaded_file):
                 ns = {'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'}
                 text_pieces = [node.text for node in root.findall('.//w:t', ns) if node.text]
                 return "\n".join(text_pieces)
-        elif name.endswith(".csv"):
-            return pd.read_csv(BytesIO(file_bytes)).to_string()
-        elif name.endswith(".xlsx") or name.endswith(".xls"):
-            return pd.read_excel(BytesIO(file_bytes)).to_string()
-        else:
-            return f"[Binary File Uploaded: {uploaded_file.name}]"
-    except Exception as e:
-        return f"[Text extraction note: {str(e)}]"
+        elif name.endswith(".csv"): return pd.read_csv(BytesIO(file_bytes)).to_string()
+        elif name.endswith(".xlsx") or name.endswith(".xls"): return pd.read_excel(BytesIO(file_bytes)).to_string()
+        else: return f"[Binary File Uploaded: {uploaded_file.name}]"
+    except Exception as e: return f"[Text extraction note: {str(e)}]"
 
 # ==========================================
 # ⚡ SECURE MULTI-DEVICE DATA LOCKER PIPELINE
 # ==========================================
 def save_file_to_github(file_bytes, filename, folder="vault"):
-    if not TOKEN or not REPO: 
-        return False
+    if not TOKEN or not REPO: return False
     path = f"{folder}/{filename}"
     url = f"https://api.github.com/repos/{REPO}/contents/{path}"
     headers = {"Authorization": f"token {TOKEN}", "Accept": "application/vnd.github.v3+json", "Cache-Control": "no-cache"}
     res = requests.get(url, headers=headers)
     sha = res.json().get("sha") if res.status_code == 200 else None
-    
     encoded_content = base64.b64encode(file_bytes).decode("utf-8")
     payload = {"message": f"Cloud Upload: {filename}", "content": encoded_content}
     if sha: payload["sha"] = sha
-        
     response = requests.put(url, headers=headers, json=payload)
     return response.status_code in [200, 201]
 
 def sync_entire_db_to_github():
-    if not TOKEN or not REPO: 
-        return False
+    if not TOKEN or not REPO: return False
     url = f"https://api.github.com/repos/{REPO}/contents/logs.csv"
     headers = {"Authorization": f"token {TOKEN}", "Accept": "application/vnd.github.v3+json", "Cache-Control": "no-cache"}
     res = requests.get(url, headers=headers)
     sha = res.json().get("sha") if res.status_code == 200 else None
-    
     df_to_save = st.session_state["cached_db"]
     encoded_content = base64.b64encode(df_to_save.to_csv(index=False).encode("utf-8")).decode("utf-8")
     payload = {"message": "Database Structural Optimization Event", "content": encoded_content, "sha": sha if sha else None}
-    
     response = requests.put(url, headers=headers, json=payload)
     return response.status_code in [200, 201]
 
 def log_row_to_csv(row_dict, filename="logs.csv"):
-    if not TOKEN or not REPO: 
-        return
+    if not TOKEN or not REPO: return
     url = f"https://api.github.com/repos/{REPO}/contents/{filename}?nocache={int(time.time())}"
     headers = {"Authorization": f"token {TOKEN}", "Accept": "application/vnd.github.v3+json", "Cache-Control": "no-cache"}
     res = requests.get(url, headers=headers)
-    existing_content = ""
     sha = None
-    
     if res.status_code == 200:
         sha = res.json().get("sha")
-        existing_content = base64.b64decode(res.json().get("content")).decode("utf-8")
-        df = pd.read_csv(BytesIO(existing_content.encode("utf-8")))
+        df = pd.read_csv(BytesIO(base64.b64decode(res.json().get("content")).decode("utf-8")))
     else:
         df = pd.DataFrame(columns=["Timestamp", "Section", "Score", "Notes", "AI_Summary", "Raw_Content", "RowID"])
     
@@ -369,45 +358,42 @@ def log_row_to_csv(row_dict, filename="logs.csv"):
 def load_live_database_uncached():
     if not TOKEN or not REPO: 
         return pd.DataFrame(columns=["Timestamp", "Section", "Score", "Notes", "AI_Summary", "Raw_Content", "RowID"])
-        
     url = f"https://api.github.com/repos/{REPO}/contents/logs.csv?t={int(time.time())}"
     headers = {"Authorization": f"token {TOKEN}", "Accept": "application/vnd.github.v3+json", "Cache-Control": "no-cache"}
     try:
         res = requests.get(url, headers=headers)
         if res.status_code == 200:
-            content_b64 = res.json().get("content", "")
-            content_str = base64.b64decode(content_b64).decode("utf-8")
-            loaded_df = pd.read_csv(BytesIO(content_str.encode("utf-8")))
-            
+            loaded_df = pd.read_csv(BytesIO(base64.b64decode(res.json().get("content")).decode("utf-8")))
             if "AI_Summary" not in loaded_df.columns: loaded_df["AI_Summary"] = ""
             if "Raw_Content" not in loaded_df.columns: loaded_df["Raw_Content"] = ""
             if "RowID" not in loaded_df.columns: loaded_df["RowID"] = ""
-
             missing_id_mask = loaded_df["RowID"].isna() | (loaded_df["RowID"].astype(str).str.strip() == "")
             if missing_id_mask.any():
                 loaded_df.loc[missing_id_mask, "RowID"] = [uuid.uuid4().hex for _ in range(int(missing_id_mask.sum()))]
             return loaded_df
-    except:
-        pass
+    except: pass
     return pd.DataFrame(columns=["Timestamp", "Section", "Score", "Notes", "AI_Summary", "Raw_Content", "RowID"])
 
 def commit_new_log(row_dict):
     if "AI_Summary" not in row_dict: row_dict["AI_Summary"] = ""
     if "Raw_Content" not in row_dict: row_dict["Raw_Content"] = ""
     if not row_dict.get("RowID"): row_dict["RowID"] = uuid.uuid4().hex
-        
-    if st.session_state["cached_db"].empty:
-        st.session_state["cached_db"] = pd.DataFrame([row_dict])
-    else:
-        st.session_state["cached_db"] = pd.concat([st.session_state["cached_db"], pd.DataFrame([row_dict])], ignore_index=True)
+    if st.session_state["cached_db"].empty: st.session_state["cached_db"] = pd.DataFrame([row_dict])
+    else: st.session_state["cached_db"] = pd.concat([st.session_state["cached_db"], pd.DataFrame([row_dict])], ignore_index=True)
     log_row_to_csv(row_dict)
 
 def regenerate_summary_for_row(row_id, section, raw_text, prompt_template):
     resolved_summary = call_gemini_engine(prompt_template)
+    # Protection against silent fail loop: Do NOT save '❌' errors to the database
+    if "❌" in resolved_summary:
+        st.error(f"Failed to compile. The AI engine timed out or was overloaded. Please try again in a moment.")
+        return False
+    
     st.session_state["cached_db"].loc[
         (st.session_state["cached_db"]["RowID"] == row_id) & (st.session_state["cached_db"]["Section"] == section), "AI_Summary"
     ] = resolved_summary
     sync_entire_db_to_github()
+    return True
 
 def delete_row(row_id, section):
     st.session_state["cached_db"] = st.session_state["cached_db"][
@@ -435,16 +421,14 @@ for col in ["AI_Summary", "Raw_Content", "RowID"]:
     if col not in st.session_state["cached_db"].columns:
         st.session_state["cached_db"][col] = ""
 
-st.markdown("<h1 style='text-align: center; color: #0F172A; margin-bottom: 20px;'>🎯 Khemka Life OS</h1>", unsafe_allow_html=True)
+st.markdown("<h1 style='text-align: center; color: #0F172A; margin-bottom: 20px; font-weight: 800;'>🎯 Khemka Life OS</h1>", unsafe_allow_html=True)
 
-st.markdown('<div class="sync-btn">', unsafe_allow_html=True)
-if st.button("🔄 FORCE SYNC ALL DEVICES NOW", use_container_width=True):
+if st.button("🔄 FORCE SYNC ALL DEVICES NOW", type="primary", use_container_width=True):
     with st.spinner("Downloading fresh database arrays from cloud..."):
         st.session_state["cached_db"] = load_live_database_uncached()
         st.success("Synchronized! All laptop and mobile entries are up to date.")
         time.sleep(0.5)
         st.rerun()
-st.markdown('</div>', unsafe_allow_html=True)
 
 history_df = st.session_state["cached_db"]
 st.caption(f"Last Hard Synchronization Check: {datetime.now().strftime('%H:%M:%S')}")
@@ -463,25 +447,22 @@ with tab1:
     st.markdown("### 📋 Daily Fitness Core Protocol")
     st.markdown('<div class="tip-box">', unsafe_allow_html=True)
     st.markdown("""
-    **Follow these 18 non-negotiable protocols daily:**
-    1. 💧 **Hydration Engine:** Drink at least 3-4 liters of water daily to maintain cellular function.
-    2. 🏃 **Daily Activity Target:** Commit to 20,000 steps daily, leveraging walking during calls or meetings.
-    3. 🛌 **Circadian Sleep Window:** Lock down recovery cycles strictly by sleeping at 10 PM and waking at 5 AM.
-    4. 🥦 **Nutritional Shielding:** Fuel exclusively with healthy whole foods; zero processed junk food.
-    5. 🛑 **Sugar Elimination:** Completely eradicate refined sugars from your diet to prevent energy crashes.
-    6. 🥩 **Protein Synthesis:** Ensure high, lean protein intake with every single meal to rebuild muscle.
-    7. 🫁 **Respiratory Reset:** Execute deep breathing exercises daily to regulate nervous system stress.
-    8. 🚿 **Dopamine Reset:** End showers with 60 seconds of cold exposure to spike natural dopamine.
-    9. 🚶 **NEAT Activity:** Always take the stairs. Never take the lift or escalator.
-    10. 📵 **Digital Boundaries:** Strictly no gadgets in the washroom. 
-    11. 🌙 **Screen Curfew:** Absolute cessation of all screen exposure after 9:30 PM.
-    12. 🧘 **Mental Clarity:** Execute a proper digital detox window every afternoon.
-    13. 🦷 **Oral Hygiene:** Brush thoroughly 2 times a day to prevent systemic inflammation.
-    14. 🧴 **Dermatology:** Maintain a proper daily skin care and personal hygiene routine.
-    15. 🧬 **Hormonal Health:** Actively engage in heavy lifting and sleep optimization to increase Testosterone levels.
-    16. ☀️ **Morning Sunlight:** Get natural sunlight in your eyes within 15 minutes of waking at 5 AM.
-    17. 🏋️ **Resistance Training:** Engage in structured weightlifting at least 4 times a week.
-    18. 🧘 **Posture Correction:** Stretch hamstrings and spinal columns every evening to counter seated work.
+    **Follow these non-negotiable protocols daily:**
+    * 💧 **Hydration Engine:** Drink at least 3-4 liters of water daily.
+    * 🏃 **Daily Activity Target:** Commit to 20,000 steps daily.
+    * 🛌 **Circadian Sleep Window:** Sleep strictly by 10 PM and wake at 5 AM.
+    * 🥦 **Nutritional Shielding:** Pure whole foods; zero processed junk food or sugar.
+    * 🥩 **Protein Synthesis:** High, lean protein intake with every meal.
+    * 🫁 **Respiratory Reset:** Execute deep breathing exercises daily.
+    * 🚿 **Dopamine Reset:** End showers with 60 seconds of cold exposure.
+    * 🚶 **NEAT Activity:** Always take the stairs. Never take the lift.
+    * 📵 **Digital Boundaries:** Strictly no gadgets in the washroom or after 9:30 PM.
+    * 🧘 **Mental Clarity:** Execute a proper digital detox window every afternoon.
+    * 🦷 **Oral Hygiene:** Brush thoroughly 2 times a day.
+    * 🧴 **Dermatology:** Maintain proper daily skin care routine.
+    * 🧬 **Hormonal Health:** Actively engage in routines to increase Testosterone.
+    * ☀️ **Morning Sunlight:** Natural sunlight in eyes within 15 mins of waking.
+    * 🏋️ **Resistance Training:** Lift heavy at least 4 times a week.
     """)
     st.markdown('</div>', unsafe_allow_html=True)
     
@@ -509,7 +490,7 @@ with tab1:
     voice_input_widget("h_stats_pad", "voice_health_stats", label="🎤 Dictate Body Stats")
     stats_voice_capture = st.text_area("Metrics Command Matrix Analyzer:", key="h_stats_pad", placeholder="Example: Current Weight 75, Target Weight 70, Current Fat 14%, Target Fat 12%, Current BMI 22.4")
     
-    if st.button("💾 Parse & Append Body Stats Data Stream", use_container_width=True):
+    if st.button("💾 Parse & Append Body Stats", type="primary", use_container_width=True):
         if stats_voice_capture:
             with st.spinner("Decoding layout parameter values..."):
                 parse_prompt = f"Extract numerical entries for current weight, target weight, current fat, target fat, and current BMI. Output ONLY a comma-separated array string exactly matching this schema: CurrentWeight,TargetWeight,CurrentFat,TargetFat,CurrentBMI:\n\n{stats_voice_capture}"
@@ -531,6 +512,7 @@ with tab1:
                 except Exception: 
                     st.error("Extraction unaligned. Try structuring: 'Current Weight 75, Target 70, Fat 14, Target 12, BMI 22'")
 
+    # Line chart plotting
     if not history_df.empty:
         stats_history = history_df[history_df["Section"] == "Health_Stats"]
         if not stats_history.empty:
@@ -562,7 +544,7 @@ with tab1:
     st.markdown("### 📂 Health Files & Diagnostics Vault")
     uploaded_files = st.file_uploader("Upload incoming health data files / logs:", type=["pdf", "png", "jpg", "xlsx", "docx"], accept_multiple_files=True, key="h_bulk")
     
-    if st.button("Inject File Vectors to Health Vault", use_container_width=True):
+    if st.button("Inject File Vectors to Health Vault", type="primary", use_container_width=True):
         if uploaded_files:
             existing_names = get_existing_filenames("Health")
             skipped = []
@@ -578,19 +560,14 @@ with tab1:
                 mime_type = "application/pdf" if f.name.endswith(".pdf") else ("image/jpeg" if f.name.endswith(".jpg") or f.name.endswith(".jpeg") else "image/png" if f.name.endswith(".png") else None)
                 
                 if mime_type:
-                    ai_summary = call_gemini_engine("Provide a clean, deep-dive content summary detailing the key findings of this health document. Focus on core observations and parameters. Strictly 8-10 lines long.", file_bytes=f_bytes, mime_type=mime_type)
+                    ai_summary = call_gemini_engine("Provide a visually appealing summary. Format your ENTIRE response strictly as 8-10 crisp, actionable bullet points (using relevant emojis) detailing the key findings. Do not write paragraphs.", file_bytes=f_bytes, mime_type=mime_type)
                     raw_extracted = f"[Image/PDF Multi-modal File: {f.name}]"
                 else:
                     raw_extracted = extract_raw_text(f)
-                    ai_summary = call_gemini_engine(f"Provide a clean, deep-dive content summary detailing the key findings. Strictly 8-10 lines long:\n\n{raw_extracted[:15000]}")
+                    ai_summary = call_gemini_engine(f"Provide a visually appealing summary. Format your ENTIRE response strictly as 8-10 crisp, actionable bullet points (using relevant emojis) detailing the key findings. Do not write paragraphs:\n\n{raw_extracted[:15000]}")
                 
                 commit_new_log({
-                    "Timestamp": timestamp, 
-                    "Section": "Health", 
-                    "Score": 10, 
-                    "Notes": f"📄 {f.name}", 
-                    "AI_Summary": ai_summary, 
-                    "Raw_Content": raw_extracted
+                    "Timestamp": timestamp, "Section": "Health", "Score": 10, "Notes": f"📄 {f.name}", "AI_Summary": ai_summary, "Raw_Content": raw_extracted
                 })
                 
             if skipped: st.warning(f"Skipped duplicate records already logged: {', '.join(skipped)}")
@@ -602,17 +579,39 @@ with tab1:
     if not h_data.empty: 
         for idx, (_, row) in enumerate(h_data.iloc[::-1].iterrows()):
             row_id = str(row.get('RowID', '') or f"legacy_{row['Timestamp']}_{idx}")
-            st.markdown(f'<div class="file-card">', unsafe_allow_html=True)
-            st.markdown(f"#### {str(row.get('Notes', 'Health Item')).split('|')[0]}")
-            st.caption(f"Archived on: {row['Timestamp']}")
-            st.markdown(str(row.get('AI_Summary', '')))
+            title_slug = str(row.get('Notes', 'Health Item')).split('|')[0]
+            ai_sum = str(row.get('AI_Summary', ''))
+            raw_text = str(row.get("Raw_Content", ""))
             
-            with st.expander("📂 Click to view original raw file text"):
-                st.text_area("Original Content Stream", value=str(row.get("Raw_Content", "")), height=200, disabled=True, key=f"raw_h_{row_id}")
-            if st.button("🗑️ Delete this record", key=f"delete_h_{row_id}"):
-                delete_row(row_id, "Health")
-                st.rerun()
-            st.markdown('</div>', unsafe_allow_html=True)
+            with st.container(border=True):
+                st.markdown(f"<h4 style='margin-top:0;'>{title_slug}</h4>", unsafe_allow_html=True)
+                st.caption(f"Archived on: {row['Timestamp']}")
+                
+                is_corrupted = any(err in ai_sum.lower() for err in ["unable to compile", "ceiling met", "v1beta", "historical document", "engine error", "timeout", "connection", "status 404", "❌", "error"]) or ai_sum.strip() == ""
+                has_clean_raw = raw_text.strip() != "" and not any(err in raw_text.lower() for err in ["unable to compile", "connection refused", "engine error", "rejected the request"])
+
+                if is_corrupted:
+                    st.warning("📋 Summary uncompiled due to historical error logs layout frames.")
+                else:
+                    st.markdown(ai_sum)
+
+                if has_clean_raw:
+                    btn_label = "✨ Generate Missing 8-10 Line Pointers Summary Now" if is_corrupted else "🔄 Regenerate summary into crisp pointers"
+                    if st.button(btn_label, key=f"repair_h_{row_id}", type="primary" if is_corrupted else "secondary"):
+                        with st.spinner("Extracting content metrics directly into crisp bullet points..."):
+                            repair_prompt = f"Provide a visually appealing summary. Format your ENTIRE response strictly as 8-10 crisp, actionable bullet points (using relevant emojis) detailing the exact key findings. Do not write paragraphs:\n\n{raw_text[:20000]}"
+                            success = regenerate_summary_for_row(row_id, "Health", raw_text, repair_prompt)
+                        if success:
+                            st.success("Summary generated and saved permanently!")
+                            time.sleep(0.5)
+                            st.rerun()
+                            
+                    with st.expander("📂 Click to view original raw file text"):
+                        st.text_area("Original Content Stream", value=raw_text, height=200, disabled=True, key=f"raw_h_{row_id}")
+
+                if st.button("🗑️ Delete this record", key=f"delete_h_{row_id}"):
+                    delete_row(row_id, "Health")
+                    st.rerun()
 
 # ==========================================
 # 🧠 TAB 2: LEARNING & DEVELOPMENT MODULE
@@ -622,7 +621,7 @@ with tab2:
     l_data = history_df[history_df["Section"] == "Learning"]
     
     st.markdown("### ⚡ Master Life Implementation Blueprint")
-    if st.button("✨ SYNTHESIZE 50-60 LINE MASTER KNOWLEDGE BLUEPRINT", use_container_width=True, key="gen_l_rules"):
+    if st.button("✨ SYNTHESIZE 50-60 LINE MASTER KNOWLEDGE BLUEPRINT", type="primary", use_container_width=True, key="gen_l_rules"):
         valid_contents = [str(r['Raw_Content']) for _, r in l_data.iterrows() if "unable to compile" not in str(r['Raw_Content']).lower()]
         if valid_contents:
             with st.spinner("Scanning data vectors from all stacked knowledge modules..."):
@@ -630,7 +629,7 @@ with tab2:
 
 Organize your output into 4-6 visually appealing, highly sharp category frameworks (e.g., 'Cognitive Strategy & Decision Maps', 'Operational Speed & Leverage Rules'). Under each category header, list concrete, high-impact bulleted pointers covering a wide variety of topics from his uploads.
 
-Your complete output text grid must be exactly between 50 and 60 lines long total across all categories combined:
+Format your ENTIRE response strictly as crisp, highly structured bullet points using emojis. Your complete output text grid must be exactly between 50 and 60 lines long total across all categories combined:
 {"\n\n".join(valid_contents)[:45000]}"""
                 st.session_state["l_master_rules"] = call_gemini_engine(prompt)
         else: 
@@ -659,10 +658,10 @@ Your complete output text grid must be exactly between 50 and 60 lines long tota
     voice_input_widget("inject_title", "voice_inject", label="🎤 Dictate Book/Podcast Name")
     inject_title = st.text_area("Enter Book or Podcast Title for On-the-Fly Injection:", placeholder="e.g., Principals by Ray Dalio or Tim Ferriss Podcast with Naval Ravikant", key="inject_title")
     
-    if st.button("🚀 Process One-Click AI Summary Into Master Bank", use_container_width=True):
+    if st.button("🚀 Process One-Click AI Summary Into Master Bank", type="primary", use_container_width=True):
         if inject_title:
             with st.spinner(f"Synthesizing knowledge fields for '{inject_title}'..."):
-                knowledge_prompt = f"Provide an intensive analysis detailing the central lessons, core concepts, and key strategic findings from the book or podcast titled '{inject_title}'. Format the response entirely as highly visual, high-impact bulleted pointers and actionable workflows customized for Animesh, an ambitious entrepreneur. Your complete output text block must be strictly between 8 and 10 lines long total:"
+                knowledge_prompt = f"Provide an intensive analysis detailing the central lessons, core concepts, and key strategic findings from the book or podcast titled '{inject_title}'. Format the response ENTIRELY as highly visual, high-impact bulleted pointers (using emojis) and actionable workflows customized for Animesh, an ambitious entrepreneur. Strictly 8-10 lines long total."
                 generated_insight = call_gemini_engine(knowledge_prompt)
                 
                 timestamp = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -685,7 +684,7 @@ Your complete output text grid must be exactly between 50 and 60 lines long tota
     media_name = st.text_input("Source Batch Reference Title (e.g. Luxury Business Layouts Series):")
     uploaded_books = st.file_uploader("Drop books, essays or article texts in bulk:", type=["pdf", "docx", "xlsx", "txt", "png", "jpg"], accept_multiple_files=True, key="l_bulk")
     
-    if st.button("Inject Batch to Library Vault", use_container_width=True):
+    if st.button("Inject Batch to Library Vault", type="primary", use_container_width=True):
         if uploaded_books:
             existing_names = get_existing_filenames("Learning")
             skipped = []
@@ -698,24 +697,18 @@ Your complete output text grid must be exactly between 50 and 60 lines long tota
                 
                 with st.spinner(f"Extracting text parameters for: {b.name}..."):
                     save_file_to_github(b_bytes, f"library_{media_name.replace(' ','_')}_{b.name}")
-                    
                     mime_type = "application/pdf" if b.name.endswith(".pdf") else ("image/jpeg" if b.name.endswith(".jpg") or b.name.endswith(".jpeg") else "image/png" if b.name.endswith(".png") else None)
                     
                     if mime_type:
-                        ai_summary = call_gemini_engine("Provide a visually appealing summary structured strictly as high-impact bulleted pointers detailing the exact key findings of this document. Cover all central themes explicitly. Strictly 8-10 lines long.", file_bytes=b_bytes, mime_type=mime_type)
+                        ai_summary = call_gemini_engine("Provide a visually appealing summary. Format your ENTIRE response strictly as 8-10 crisp, actionable bullet points (using emojis) detailing the exact key findings of this document. Cover all central themes explicitly.", file_bytes=b_bytes, mime_type=mime_type)
                         single_book_text = f"[Multimodal File: {b.name}]"
                     else:
                         single_book_text = extract_raw_text(b)
-                        prompt = f"Analyze the text. Provide a visually appealing summary structured strictly as high-impact bulleted pointers detailing the exact key findings. Cover central themes explicitly. Strictly 8-10 lines long:\n\n{single_book_text[:28000]}"
+                        prompt = f"Analyze the text. Provide a visually appealing summary. Format your ENTIRE response strictly as 8-10 crisp, actionable bullet points (using emojis) detailing the exact key findings. Cover central themes explicitly:\n\n{single_book_text[:28000]}"
                         ai_summary = call_gemini_engine(prompt)
                         
                     commit_new_log({
-                        "Timestamp": timestamp, 
-                        "Section": "Learning", 
-                        "Score": 10, 
-                        "Notes": f"📄 {b.name} | Batch: {media_name}", 
-                        "AI_Summary": ai_summary, 
-                        "Raw_Content": single_book_text
+                        "Timestamp": timestamp, "Section": "Learning", "Score": 10, "Notes": f"📄 {b.name} | Batch: {media_name}", "AI_Summary": ai_summary, "Raw_Content": single_book_text
                     })
                     
             if skipped: st.warning(f"Skipped duplicates present in database layers: {', '.join(skipped)}")
@@ -727,37 +720,39 @@ Your complete output text grid must be exactly between 50 and 60 lines long tota
     if not l_data.empty:
         for idx, (_, row) in enumerate(l_data.iloc[::-1].iterrows()):
             row_id = str(row.get('RowID', '') or f"legacy_{row['Timestamp']}_{idx}")
-            st.markdown(f'<div class="file-card">', unsafe_allow_html=True)
-            st.markdown(f"#### {str(row.get('Notes', 'Book File')).split('|')[0]}")
-            st.caption(f"Archived on: {row['Timestamp']}")
+            title_slug = str(row.get('Notes', 'Book File')).split('|')[0]
             
-            ai_sum = str(row.get('AI_Summary', ''))
-            raw_text = str(row.get("Raw_Content", ""))
-            is_corrupted = any(err in ai_sum.lower() for err in ["unable to compile", "ceiling met", "v1beta", "historical document", "engine error", "timeout", "connection", "status 404", "❌", "error"]) or ai_sum.strip() == ""
-            has_clean_raw = raw_text.strip() != "" and not any(err in raw_text.lower() for err in ["unable to compile", "connection refused", "engine error", "rejected the request"])
+            with st.container(border=True):
+                st.markdown(f"<h4 style='margin-top:0;'>{title_slug}</h4>", unsafe_allow_html=True)
+                st.caption(f"Archived on: {row['Timestamp']}")
+                
+                ai_sum = str(row.get('AI_Summary', ''))
+                raw_text = str(row.get("Raw_Content", ""))
+                is_corrupted = any(err in ai_sum.lower() for err in ["unable to compile", "ceiling met", "v1beta", "historical document", "engine error", "timeout", "connection", "status 404", "❌", "error"]) or ai_sum.strip() == ""
+                has_clean_raw = raw_text.strip() != "" and not any(err in raw_text.lower() for err in ["unable to compile", "connection refused", "engine error", "rejected the request"])
 
-            if is_corrupted:
-                st.warning("📋 Summary uncompiled due to historical error logs layout frames.")
-            else:
-                st.markdown(ai_sum)
+                if is_corrupted:
+                    st.warning("📋 Summary uncompiled due to historical error logs layout frames.")
+                else:
+                    st.markdown(ai_sum)
 
-            if has_clean_raw:
-                btn_label = "✨ Generate Missing 8-10 Line Pointers Summary Now" if is_corrupted else "🔄 Regenerate summary into pointers"
-                if st.button(btn_label, key=f"repair_l_{row_id}"):
-                    with st.spinner("Extracting book content layers directly into high-impact pointers..."):
-                        repair_prompt = f"Analyze the text content of this document. Provide a clean, comprehensive content summary structured strictly as high-impact bulleted pointers detailing the exact key findings and what this specific document states. Focus on core lessons, strategy insights, and frameworks. Your entire output response must be strictly between 8 and 10 lines long total:\n\n{raw_text[:25000]}"
-                        regenerate_summary_for_row(row_id, "Learning", raw_text, repair_prompt)
-                    st.success("Summary generated and saved permanently!")
-                    time.sleep(0.5)
+                if has_clean_raw:
+                    btn_label = "✨ Generate Missing 8-10 Line Pointers Summary Now" if is_corrupted else "🔄 Regenerate summary into crisp pointers"
+                    if st.button(btn_label, key=f"repair_l_{row_id}", type="primary" if is_corrupted else "secondary"):
+                        with st.spinner("Extracting book content layers directly into high-impact pointers..."):
+                            repair_prompt = f"Analyze the text content of this document. Provide a clean, comprehensive content summary. Format your ENTIRE response strictly as 8-10 crisp, actionable bullet points (using emojis) detailing the exact key findings and what this specific document states. Focus on core lessons, strategy insights, and frameworks. Do not use paragraphs:\n\n{raw_text[:25000]}"
+                            success = regenerate_summary_for_row(row_id, "Learning", raw_text, repair_prompt)
+                        if success:
+                            st.success("Summary generated and saved permanently!")
+                            time.sleep(0.5)
+                            st.rerun()
+                        
+                    with st.expander("📂 Click to view original raw document text viewer"):
+                        st.text_area("Original Content Stream Viewer Panel", value=raw_text, height=250, disabled=True, key=f"raw_l_{row_id}")
+
+                if st.button("🗑️ Delete this library card", key=f"delete_l_{row_id}"):
+                    delete_row(row_id, "Learning")
                     st.rerun()
-                    
-                with st.expander("📂 Click to view original raw document text viewer"):
-                    st.text_area("Original Content Stream Viewer Panel", value=raw_text, height=250, disabled=True, key=f"raw_l_{row_id}")
-
-            if st.button("🗑️ Delete this library card", key=f"delete_l_{row_id}"):
-                delete_row(row_id, "Learning")
-                st.rerun()
-            st.markdown('</div>', unsafe_allow_html=True)
 
 # ==========================================
 # 3. WORK & BUSINESS MODULE
@@ -773,10 +768,10 @@ with tab3:
     biz_snapshot = st.text_area("Update Business State & To-Do's:", key="biz_snapshot")
     biz_snap_file = st.file_uploader("Upload context (PDF, Word, Image):", type=["pdf", "docx", "jpg", "png", "txt"], key="b_snap_file")
     
-    if st.button("🚀 Analyze Business State & Generate Strategy", use_container_width=True):
+    if st.button("🚀 Analyze Business State & Generate Strategy", type="primary", use_container_width=True):
         if biz_snapshot or biz_snap_file:
             with st.spinner("Generating expansion & long-term strategy suggestions..."):
-                prompt = f"Act as an elite strategy consultant for Animesh's businesses. Based on these updates, provide high-level AI suggestions on what more/better he could do to expand his businesses and long-term strategy suggestions for each.\nContext: {biz_snapshot}"
+                prompt = f"Act as an elite strategy consultant for Animesh's businesses. Based on these updates, provide high-level AI suggestions on what more/better he could do to expand his businesses and long-term strategy suggestions for each. Format your ENTIRE response strictly as crisp, strategic bullet points using emojis.\nContext: {biz_snapshot}"
                 
                 file_bytes, mime = None, None
                 if biz_snap_file:
@@ -786,14 +781,7 @@ with tab3:
                         prompt += f"\nFile Text: {extract_raw_text(biz_snap_file)[:10000]}"
                 
                 ai_strat = call_gemini_engine(prompt, file_bytes=file_bytes, mime_type=mime)
-                commit_new_log({
-                    "Timestamp": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S"), 
-                    "Section": "Business", 
-                    "Score": 10, 
-                    "Notes": "Business Snapshot Strategy", 
-                    "AI_Summary": ai_strat, 
-                    "Raw_Content": biz_snapshot
-                })
+                commit_new_log({"Timestamp": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S"), "Section": "Business", "Score": 10, "Notes": "Business Snapshot Strategy", "AI_Summary": ai_strat, "Raw_Content": biz_snapshot})
                 st.success("Strategy generated!")
                 time.sleep(0.5)
                 st.rerun()
@@ -804,10 +792,10 @@ with tab3:
     biz_advisor = st.text_area("Share ideas, thoughts, or strategies for feedback:", key="biz_advisor")
     biz_adv_file = st.file_uploader("Upload context files (PDF, Word, Image):", type=["pdf", "docx", "jpg", "png", "txt"], key="b_adv_file")
     
-    if st.button("💡 Get Advisor Feedback", use_container_width=True):
+    if st.button("💡 Get Advisor Feedback", type="primary", use_container_width=True):
         if biz_advisor or biz_adv_file:
             with st.spinner("Consulting advisor matrix..."):
-                prompt = f"Act as a world-class personal business advisor to Animesh. He has just shared this idea/strategy. Tell him what you think of it, what he could do to make it work, and how to execute it better:\n\nText Idea: {biz_advisor}"
+                prompt = f"Act as a world-class personal business advisor to Animesh. He has just shared this idea/strategy. Tell him what you think of it, what he could do to make it work, and how to execute it better. Format your ENTIRE response strictly as crisp, strategic bullet points using emojis:\n\nText Idea: {biz_advisor}"
                 
                 file_bytes, mime = None, None
                 if biz_adv_file:
@@ -817,14 +805,7 @@ with tab3:
                         prompt += f"\nFile Context Text: {extract_raw_text(biz_adv_file)[:10000]}"
                         
                 feedback = call_gemini_engine(prompt, file_bytes=file_bytes, mime_type=mime)
-                commit_new_log({
-                    "Timestamp": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S"), 
-                    "Section": "Business", 
-                    "Score": 10, 
-                    "Notes": "Advisor Consultation", 
-                    "AI_Summary": feedback, 
-                    "Raw_Content": biz_advisor
-                })
+                commit_new_log({"Timestamp": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S"), "Section": "Business", "Score": 10, "Notes": "Advisor Consultation", "AI_Summary": feedback, "Raw_Content": biz_advisor})
                 st.rerun()
 
     st.write("---")
@@ -844,7 +825,7 @@ with tab3:
     st.markdown("### 📥 Venture Document Vault")
     biz_docs = st.file_uploader("Upload engineering data, sheets, or invoices:", type=["xlsx", "csv", "pdf", "docx", "png", "jpg"], accept_multiple_files=True, key="b_bulk")
     
-    if st.button("Archive Venture Metrics", use_container_width=True):
+    if st.button("Archive Venture Metrics", type="primary", use_container_width=True):
         if biz_docs:
             existing_names = get_existing_filenames("Business")
             for bd in biz_docs:
@@ -854,18 +835,18 @@ with tab3:
                 
                 mime = "application/pdf" if bd.name.endswith(".pdf") else "image/jpeg" if "jpg" in bd.name else "image/png" if bd.name.endswith("png") else None
                 if mime:
-                    ai_summary = call_gemini_engine("Provide a clean, deep-dive content summary detailing exactly what this document states. Focus on specifications and logistics. Strictly 8-10 lines long.", file_bytes=bd.getvalue(), mime_type=mime)
+                    ai_summary = call_gemini_engine("Provide a clean, deep-dive content summary. Format your ENTIRE response strictly as 8-10 crisp, actionable bullet points (using emojis) detailing exactly what this document states. Focus on specifications and logistics.", file_bytes=bd.getvalue(), mime_type=mime)
                     single_doc_text = f"[Multi-modal File: {bd.name}]"
                 else:
                     single_doc_text = extract_raw_text(bd)
-                    prompt = f"Provide a clean, deep-dive content summary detailing exactly what this document states. Strictly 8-10 lines long:\n\n{single_doc_text[:20000]}"
+                    prompt = f"Provide a clean, deep-dive content summary. Format your ENTIRE response strictly as 8-10 crisp, actionable bullet points (using emojis) detailing exactly what this document states:\n\n{single_doc_text[:20000]}"
                     ai_summary = call_gemini_engine(prompt)
                 
                 commit_new_log({"Timestamp": timestamp, "Section": "Business", "Score": 10, "Notes": f"📄 {bd.name}", "AI_Summary": ai_summary, "Raw_Content": single_doc_text})
             st.rerun()
 
     st.write("### ⚡ Master Business Strategy Rules")
-    if st.button("✨ GENERATE 50-60 LINE STRATEGIC BLUEPRINT FROM ALL VENTURE FILES", use_container_width=True, key="gen_b_rules"):
+    if st.button("✨ GENERATE 50-60 LINE STRATEGIC BLUEPRINT FROM ALL VENTURE FILES", type="primary", use_container_width=True, key="gen_b_rules"):
         valid_contents = [str(r['Raw_Content']) for _, r in b_data.iterrows() if not any(err in str(r['Raw_Content']).lower() for err in ["unable to compile", "connection refused", "engine error", "rejected the request"])]
         if valid_contents:
             combined_text = "\n\n".join(valid_contents)
@@ -874,7 +855,7 @@ with tab3:
 
 Organize the output into 4-6 clearly labeled categories relevant to his ventures (for example: 'Export & Compliance', 'Manufacturing & Supply Chain', 'Design & Differentiation'). Under each category header, list specific, actionable rules.
 
-Your complete output must total between 50 and 60 lines across all categories combined:
+Format your ENTIRE response strictly as crisp, highly structured bullet points using emojis. Your complete output must total between 50 and 60 lines across all categories combined:
 
 {combined_text[:50000]}"""
                 st.session_state["b_master_rules"] = call_gemini_engine(prompt)
@@ -887,40 +868,39 @@ Your complete output must total between 50 and 60 lines across all categories co
     if not b_data.empty: 
         st.write("### 📜 Corporate Summaries & Specifications Feed:")
         for idx, (_, row) in enumerate(b_data.iloc[::-1].iterrows()):
-            ai_sum = str(row.get('AI_Summary', ''))
-            raw_text = str(row.get("Raw_Content", ""))
-            timestamp_str = str(row['Timestamp'])
-            row_id = str(row.get('RowID', '') or f"legacy_{timestamp_str}_{idx}")
+            row_id = str(row.get('RowID', '') or f"legacy_{row['Timestamp']}_{idx}")
             title_slug = str(row.get('Notes', 'Venture File')).split('|')[0]
             
-            is_corrupted = any(err in ai_sum.lower() for err in ["unable to compile", "ceiling met", "v1beta", "historical document", "engine error", "timeout", "connection", "status 404", "❌", "error"]) or ai_sum.strip() == ""
-            has_clean_raw = raw_text.strip() != "" and not any(err in raw_text.lower() for err in ["unable to compile", "connection refused", "engine error", "rejected the request"])
-            
-            st.markdown(f'<div class="file-card">', unsafe_allow_html=True)
-            st.markdown(f"### {title_slug}")
-            st.caption(f"Entry Timestamp: {timestamp_str}")
-            
-            if is_corrupted:
-                st.warning("📋 Summary uncompiled due to a structural API connection block.")
-            else:
-                st.markdown(ai_sum)
+            with st.container(border=True):
+                st.markdown(f"<h4 style='margin-top:0;'>{title_slug}</h4>", unsafe_allow_html=True)
+                st.caption(f"Entry Timestamp: {row['Timestamp']}")
+                
+                ai_sum = str(row.get('AI_Summary', ''))
+                raw_text = str(row.get("Raw_Content", ""))
+                is_corrupted = any(err in ai_sum.lower() for err in ["unable to compile", "ceiling met", "v1beta", "historical document", "engine error", "timeout", "connection", "status 404", "❌", "error"]) or ai_sum.strip() == ""
+                has_clean_raw = raw_text.strip() != "" and not any(err in raw_text.lower() for err in ["unable to compile", "connection refused", "engine error", "rejected the request"])
 
-            if has_clean_raw:
-                btn_label = "✨ Generate Missing 8-10 Line Summary Now" if is_corrupted else "🔄 Regenerate this summary"
-                if st.button(btn_label, key=f"repair_b_{row_id}"):
-                    with st.spinner("Extracting blueprints from original text matrix..."):
-                        repair_prompt = f"Provide a clean, comprehensive 8-to-10 line deep-dive content summary detailing the key findings and exactly what this document states. Focus on manufacturing supply chains, parameters, and design execution specs. Your entire output response must be strictly between 8 and 10 lines long:\n\n{raw_text[:22000]}"
-                        regenerate_summary_for_row(row_id, "Business", raw_text, repair_prompt)
-                    st.success("Summary generated and saved permanently!")
-                    time.sleep(0.5)
+                if is_corrupted:
+                    st.warning("📋 Summary uncompiled due to a structural API connection block.")
+                else:
+                    st.markdown(ai_sum)
+
+                if has_clean_raw:
+                    btn_label = "✨ Generate Missing 8-10 Line Pointers Summary Now" if is_corrupted else "🔄 Regenerate summary into crisp pointers"
+                    if st.button(btn_label, key=f"repair_b_{row_id}", type="primary" if is_corrupted else "secondary"):
+                        with st.spinner("Extracting blueprints from original text matrix..."):
+                            repair_prompt = f"Provide a clean, comprehensive content summary. Format your ENTIRE response strictly as 8-10 crisp, actionable bullet points (using emojis) detailing the key findings and exactly what this document states. Focus on manufacturing supply chains, parameters, and design execution specs. Do not use paragraphs:\n\n{raw_text[:22000]}"
+                            success = regenerate_summary_for_row(row_id, "Business", raw_text, repair_prompt)
+                        if success:
+                            st.success("Summary generated and saved permanently!")
+                            time.sleep(0.5)
+                            st.rerun()
+                    with st.expander("📂 Click to view original raw file text"):
+                        st.text_area("Original File Contents", value=raw_text, height=200, disabled=True, key=f"raw_b_{row_id}")
+
+                if st.button("🗑️ Delete this venture card", key=f"delete_b_{row_id}"):
+                    delete_row(row_id, "Business")
                     st.rerun()
-                with st.expander("📂 Click to view original raw file text"):
-                    st.text_area("Original File Contents", value=raw_text, height=200, disabled=True, key=f"raw_b_{row_id}")
-
-            if st.button("🗑️ Delete this venture card", key=f"delete_b_{row_id}"):
-                delete_row(row_id, "Business")
-                st.rerun()
-            st.markdown('</div>', unsafe_allow_html=True)
 
 # ==========================================
 # 4. PEACE & MINDSET MODULE
@@ -958,10 +938,10 @@ with tab4:
     guru_input = st.text_area("Express your feelings, doubts, or grievances here:", key="guru_peace")
     guru_file = st.file_uploader("Upload context (Images, Letters, PDFs):", type=["pdf", "jpg", "png", "txt", "docx"], key="guru_p_file")
     
-    if st.button("Receive Divine Guidance", use_container_width=True):
+    if st.button("Receive Divine Guidance", type="primary", use_container_width=True):
         if guru_input or guru_file:
             with st.spinner("Seeking counsel..."):
-                prompt = f"Act as Lord Krishna from the Bhagavad Gita. Animesh is expressing his feelings/doubts: '{guru_input}'. Offer him deep, calming, spiritual suggestions on how to control his emotions, stay positive, and handle the situation in the best, most righteous manner. Speak with divine compassion and strategic wisdom."
+                prompt = f"Act as Lord Krishna from the Bhagavad Gita. Animesh is expressing his feelings/doubts: '{guru_input}'. Offer him deep, calming, spiritual suggestions on how to control his emotions, stay positive, and handle the situation in the best, most righteous manner. Format your ENTIRE response strictly as crisp, actionable bullet points utilizing divine compassion and strategic wisdom."
                 
                 file_bytes, mime = None, None
                 if guru_file:
@@ -976,7 +956,7 @@ with tab4:
     st.write("---")
     st.subheader("🌌 Astrological Chart Mapping & Remedies")
     astro_files = st.file_uploader("Upload Astrological Charts (PDF, Image, Text):", type=["pdf", "png", "jpg", "txt", "docx"], accept_multiple_files=True, key="a_bulk")
-    if st.button("Execute Astro Alignment & Get Remedies", use_container_width=True):
+    if st.button("Execute Astro Alignment & Get Remedies", type="primary", use_container_width=True):
         if astro_files:
             existing_names = get_existing_filenames("Mindset")
             for af in astro_files:
@@ -986,7 +966,7 @@ with tab4:
                 save_file_to_github(f_bytes, f"astro_{timestamp.replace(':','-')}_{af.name}")
                 
                 mime = "application/pdf" if af.name.endswith(".pdf") else "image/jpeg" if "jpg" in af.name else "image/png" if af.name.endswith("png") else None
-                prompt = "Act as an expert Vedic Astrologer. Analyze this astrological chart data. Provide both a summarized and detailed view of predictions for short and long term. Crucially, offer specific advice and solutions (like gemstones to wear, specific daily rituals) to navigate this chart and maximize luck. Keep it strictly between 8 and 10 lines long."
+                prompt = "Act as an expert Vedic Astrologer. Analyze this astrological chart data. Provide both a summarized and detailed view of predictions for short and long term. Crucially, offer specific advice and solutions (like gemstones to wear, specific daily rituals) to navigate this chart and maximize luck. Format your ENTIRE response strictly as 8-10 crisp, actionable bullet points."
                 
                 if mime:
                     ai_summary = call_gemini_engine(prompt, file_bytes=f_bytes, mime_type=mime)
@@ -1003,18 +983,40 @@ with tab4:
         st.write("### 🌌 Active Spiritual & Astro Logs:")
         for idx, (_, row) in enumerate(m_data.iloc[::-1].iterrows()):
             row_id = str(row.get('RowID', '') or f"legacy_{row['Timestamp']}_{idx}")
-            st.markdown(f'<div class="file-card">', unsafe_allow_html=True)
-            if "Krishna" in str(row.get("Notes")):
-                st.markdown(f'<div class="guru-box">🦚 <b>Divine Counsel</b><br><br>{str(row.get("AI_Summary", ""))}</div>', unsafe_allow_html=True)
-            else:
-                st.markdown(f"#### {str(row.get('Notes')).split('|')[0]}")
-                st.caption(f"Logged: {row['Timestamp']}")
-                st.markdown(str(row.get('AI_Summary', '')))
-                with st.expander("📂 View Raw Input/File"):
-                    st.text_area("Content", value=str(row.get("Raw_Content", "")), height=150, disabled=True, key=f"raw_m_{row_id}")
-            if st.button("🗑️ Delete entry", key=f"delete_m_{row_id}"):
-                delete_row(row_id, row["Section"]); st.rerun()
-            st.markdown('</div>', unsafe_allow_html=True)
+            
+            with st.container(border=True):
+                if "Krishna" in str(row.get("Notes")):
+                    st.markdown(f'<div class="guru-box">🦚 <b style="font-size:16px;">Divine Counsel</b><br><br>{str(row.get("AI_Summary", ""))}</div>', unsafe_allow_html=True)
+                else:
+                    st.markdown(f"<h4 style='margin-top:0;'>{str(row.get('Notes')).split('|')[0]}</h4>", unsafe_allow_html=True)
+                    st.caption(f"Logged: {row['Timestamp']}")
+                    
+                    ai_sum = str(row.get('AI_Summary', ''))
+                    raw_text = str(row.get("Raw_Content", ""))
+                    is_corrupted = any(err in ai_sum.lower() for err in ["unable to compile", "ceiling met", "v1beta", "historical document", "engine error", "timeout", "connection", "status 404", "❌", "error"]) or ai_sum.strip() == ""
+                    has_clean_raw = raw_text.strip() != "" and not any(err in raw_text.lower() for err in ["unable to compile", "connection refused", "engine error", "rejected the request"])
+
+                    if is_corrupted:
+                        st.warning("📋 Summary uncompiled due to historical error logs layout frames.")
+                    else:
+                        st.markdown(ai_sum)
+
+                    if has_clean_raw and "Krishna" not in str(row.get("Notes")):
+                        btn_label = "✨ Generate Missing 8-10 Line Pointers Summary Now" if is_corrupted else "🔄 Regenerate summary into crisp pointers"
+                        if st.button(btn_label, key=f"repair_m_{row_id}", type="primary" if is_corrupted else "secondary"):
+                            with st.spinner("Extracting coordinates into crisp bullet points..."):
+                                repair_prompt = f"Provide a clean, comprehensive summary. Format your ENTIRE response strictly as 8-10 crisp, actionable bullet points (using emojis) detailing the exact key findings and what this document states. Focus on alignment rules, remedies, and instructions. Do not use paragraphs:\n\n{raw_text[:20000]}"
+                                success = regenerate_summary_for_row(row_id, row["Section"], raw_text, repair_prompt)
+                            if success:
+                                st.success("Summary generated and saved permanently!")
+                                time.sleep(0.5)
+                                st.rerun()
+
+                    with st.expander("📂 View Raw Input/File"):
+                        st.text_area("Content", value=raw_text, height=150, disabled=True, key=f"raw_m_{row_id}")
+                        
+                if st.button("🗑️ Delete entry", key=f"delete_m_{row_id}"):
+                    delete_row(row_id, row["Section"]); st.rerun()
 
 # ==========================================
 # 5. RELATIONSHIPS MODULE
@@ -1037,10 +1039,10 @@ with tab5:
     rel_input = st.text_area("Express relationship doubts, moods, or grievances here:", key="guru_rel")
     rel_file = st.file_uploader("Upload context (Screenshots, Texts):", type=["pdf", "png", "jpg", "txt", "docx"], key="guru_r_file")
     
-    if st.button("Seek Relationship Guidance", use_container_width=True):
+    if st.button("Seek Relationship Guidance", type="primary", use_container_width=True):
         if rel_input or rel_file:
             with st.spinner("Seeking counsel..."):
-                prompt = f"Act as Lord Krishna. Animesh is expressing feelings about his relationships: '{rel_input}'. Offer him deep, calming suggestions on how to handle the situation in the best manner, stay calm, and resolve conflicts with love and wisdom."
+                prompt = f"Act as Lord Krishna. Animesh is expressing feelings about his relationships: '{rel_input}'. Offer him deep, calming suggestions on how to handle the situation in the best manner, stay calm, and resolve conflicts with love and wisdom. Format your ENTIRE response strictly as crisp, actionable bullet points utilizing divine compassion."
                 
                 file_bytes, mime = None, None
                 if rel_file:
@@ -1057,15 +1059,15 @@ with tab5:
         st.write("### 📜 Communication & Counsel Feed:")
         for idx, (_, row) in enumerate(r_data.iloc[::-1].iterrows()):
             row_id = str(row.get('RowID', '') or f"legacy_{row['Timestamp']}_{idx}")
-            st.markdown(f'<div class="file-card">', unsafe_allow_html=True)
-            if "Krishna" in str(row.get("Notes")):
-                st.markdown(f'<div class="guru-box">🦚 <b>Divine Counsel</b><br><br>{str(row.get("AI_Summary", ""))}</div>', unsafe_allow_html=True)
-            else:
-                st.markdown(f"#### {str(row.get('Notes')).split('|')[0]}")
-                st.markdown(str(row.get('AI_Summary', 'Manual Entry Recorded.')))
-            if st.button("🗑️ Delete", key=f"delete_r_{row_id}"):
-                delete_row(row_id, "Relationships"); st.rerun()
-            st.markdown('</div>', unsafe_allow_html=True)
+            
+            with st.container(border=True):
+                if "Krishna" in str(row.get("Notes")):
+                    st.markdown(f'<div class="guru-box">🦚 <b style="font-size:16px;">Divine Counsel</b><br><br>{str(row.get("AI_Summary", ""))}</div>', unsafe_allow_html=True)
+                else:
+                    st.markdown(f"<h4 style='margin-top:0;'>{str(row.get('Notes')).split('|')[0]}</h4>", unsafe_allow_html=True)
+                    st.markdown(str(row.get('AI_Summary', 'Manual Entry Recorded.')))
+                if st.button("🗑️ Delete", key=f"delete_r_{row_id}"):
+                    delete_row(row_id, "Relationships"); st.rerun()
 
 # ==========================================
 # 6. FINANCE MODULE
@@ -1074,7 +1076,7 @@ with tab6:
     st.header("📉 Financial Intelligence Terminal")
     
     st.markdown("### 🇮🇳 Daily Market Snapshot & Recommendations")
-    if st.button("☀️ Fetch Live Indian Market Update & Indicators", use_container_width=True):
+    if st.button("☀️ Fetch Live Indian Market Update & Indicators", type="primary", use_container_width=True):
         with st.spinner("Pulling global and Indian indicators..."):
             market_data = ""
             try:
@@ -1086,7 +1088,7 @@ with tab6:
             except: 
                 market_data = "Market data pull limited. Rely on macro AI generation."
             
-            prompt = f"Provide a highly structured, visually appealing daily Indian equity market snapshot. Include key news/developments, macro analysis on global indicators (Crude, USD/INR, VIX, Geopolitics). Conclude with 2-3 specific stock investment recommendations based on technical/fundamental parameters, including exact rationale, expected return potential, and timeframe. Current data pull: {market_data}"
+            prompt = f"Provide a highly structured, visually appealing daily Indian equity market snapshot. Include key news/developments, macro analysis on global indicators (Crude, USD/INR, VIX, Geopolitics). Conclude with 2-3 specific stock investment recommendations based on technical/fundamental parameters. Format your ENTIRE response strictly as crisp, actionable bullet points (using emojis). Current data pull: {market_data}"
             ai_summary = call_gemini_engine(prompt)
             commit_new_log({"Timestamp": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S"), "Section": "Finance", "Score": 10, "Notes": "Daily Market Snapshot", "AI_Summary": ai_summary, "Raw_Content": market_data})
             st.rerun()
@@ -1094,7 +1096,7 @@ with tab6:
     st.write("---")
     st.markdown("### 🔍 Deep Equity Research Tool")
     ticker = st.text_input("Enter NSE Ticker Symbol (e.g. RELIANCE.NS, TCS.NS) for Detailed Audit:")
-    if st.button("Run Fundamental + Technical Market Audit", use_container_width=True):
+    if st.button("Run Fundamental + Technical Market Audit", type="primary", use_container_width=True):
         timestamp = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S")
         with st.spinner(f"Analyzing {ticker} across all parameters..."):
             try:
@@ -1102,7 +1104,7 @@ with tab6:
                 metrics = "Data unavailable"
                 if not hist.empty:
                     metrics = f"Price: ₹{hist['Close'].iloc[-1]:.2f} | 50MA: ₹{hist['Close'].rolling(50).mean().iloc[-1]:.2f} | 200MA: ₹{hist['Close'].rolling(200).mean().iloc[-1]:.2f}"
-                prompt = f"Act as an elite equity research analyst. Perform a deep, structured, and visually appealing research report for the Indian stock {ticker}. Analyze all technical and fundamental parameters. Conclude with a clear recommendation (BUY / SELL / HOLD), explicit rationale, expected return potential, and exact timeframe. Known metrics: {metrics}"
+                prompt = f"Act as an elite equity research analyst. Perform a deep, structured, and visually appealing research report for the Indian stock {ticker}. Analyze all technical and fundamental parameters. Conclude with a clear recommendation (BUY / SELL / HOLD), explicit rationale, expected return potential, and exact timeframe. Format your ENTIRE response strictly as crisp, actionable bullet points. Known metrics: {metrics}"
                 ai_summary = call_gemini_engine(prompt)
                 commit_new_log({"Timestamp": timestamp, "Section": "Finance", "Score": 10, "Notes": f"Research Audit: {ticker}", "AI_Summary": ai_summary, "Raw_Content": metrics})
                 st.rerun()
@@ -1111,7 +1113,7 @@ with tab6:
     st.write("---")
     st.markdown("### 📋 Portfolio Structural Evaluation")
     port_files = st.file_uploader("Upload your portfolio (PDF, Excel, Word, Image) for Wealth Advisory:", type=["xlsx", "csv", "pdf", "docx", "png", "jpg"], accept_multiple_files=True, key="p_bulk")
-    if st.button("Execute Portfolio Advisory & Risk Check", use_container_width=True):
+    if st.button("Execute Portfolio Advisory & Risk Check", type="primary", use_container_width=True):
         if port_files:
             timestamp = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S")
             existing_names = get_existing_filenames("Finance")
@@ -1120,7 +1122,7 @@ with tab6:
                 save_file_to_github(pf.getvalue(), f"portfolio_{pf.name}")
                 
                 mime = "application/pdf" if pf.name.endswith(".pdf") else "image/jpeg" if "jpg" in pf.name else "image/png" if pf.name.endswith("png") else None
-                prompt = "Act as a personal wealth and portfolio advisor. Analyze this uploaded portfolio. Provide detailed, stock-by-stock recommendations, asset allocation feedback, and restructuring advice to maximize returns and mitigate risk."
+                prompt = "Act as a personal wealth and portfolio advisor. Analyze this uploaded portfolio. Provide detailed, stock-by-stock recommendations, asset allocation feedback, and restructuring advice to maximize returns and mitigate risk. Format your ENTIRE response strictly as crisp, actionable bullet points."
                 
                 if mime:
                     ai_summary = call_gemini_engine(prompt, file_bytes=pf.getvalue(), mime_type=mime)
@@ -1139,15 +1141,38 @@ with tab6:
         st.write("### 📜 Saved Financial Research & Updates:")
         for idx, (_, row) in enumerate(f_data.iloc[::-1].iterrows()):
             row_id = str(row.get('RowID', '') or f"legacy_{row['Timestamp']}_{idx}")
-            st.markdown(f'<div class="file-card">', unsafe_allow_html=True)
-            st.markdown(f"#### {str(row.get('Notes', 'Finance Update')).split('|')[0]}")
-            st.caption(f"Session Stamp: {row['Timestamp']}")
-            st.markdown(str(row.get('AI_Summary', '')))
-            with st.expander("📂 Click to view original raw metric data"):
-                st.text_area("Extracted Data", value=str(row.get("Raw_Content", "")), height=200, disabled=True, key=f"raw_f_{row_id}")
-            if st.button("🗑️ Delete", key=f"delete_f_{row_id}"):
-                delete_row(row_id, "Finance"); st.rerun()
-            st.markdown('</div>', unsafe_allow_html=True)
+            title_slug = str(row.get('Notes', 'Finance Update')).split('|')[0]
+            
+            with st.container(border=True):
+                st.markdown(f"<h4 style='margin-top:0;'>{title_slug}</h4>", unsafe_allow_html=True)
+                st.caption(f"Session Stamp: {row['Timestamp']}")
+                
+                ai_sum = str(row.get('AI_Summary', ''))
+                raw_text = str(row.get("Raw_Content", ""))
+                is_corrupted = any(err in ai_sum.lower() for err in ["unable to compile", "ceiling met", "v1beta", "historical document", "engine error", "timeout", "connection", "status 404", "❌", "error"]) or ai_sum.strip() == ""
+                has_clean_raw = raw_text.strip() != "" and not any(err in raw_text.lower() for err in ["unable to compile", "connection refused", "engine error", "rejected the request"])
+
+                if is_corrupted:
+                    st.warning("📋 Summary uncompiled due to historical error logs layout frames.")
+                else:
+                    st.markdown(ai_sum)
+
+                if has_clean_raw:
+                    btn_label = "✨ Generate Missing 8-10 Line Pointers Summary Now" if is_corrupted else "🔄 Regenerate summary into crisp pointers"
+                    if st.button(btn_label, key=f"repair_f_{row_id}", type="primary" if is_corrupted else "secondary"):
+                        with st.spinner("Extracting content metrics directly into crisp bullet points..."):
+                            repair_prompt = f"Provide a clean, comprehensive summary. Format your ENTIRE response strictly as 8-10 crisp, actionable bullet points (using emojis) detailing the exact key findings. Do not write paragraphs:\n\n{raw_text[:20000]}"
+                            success = regenerate_summary_for_row(row_id, "Finance", raw_text, repair_prompt)
+                        if success:
+                            st.success("Summary generated and saved permanently!")
+                            time.sleep(0.5)
+                            st.rerun()
+
+                    with st.expander("📂 Click to view original raw metric data"):
+                        st.text_area("Extracted Data", value=raw_text, height=200, disabled=True, key=f"raw_f_{row_id}")
+                        
+                if st.button("🗑️ Delete", key=f"delete_f_{row_id}"):
+                    delete_row(row_id, "Finance"); st.rerun()
 
 # ==========================================
 # 7. GOALS MODULE
@@ -1170,11 +1195,11 @@ with tab7:
     vision_input = st.text_area("Define short, medium, and long-term goals:", key="vision_input")
     goal_files = st.file_uploader("Upload Vision Boards / Docs (PDF, Word, Image):", type=["pdf", "docx", "png", "jpg"], accept_multiple_files=True, key="g_bulk")
     
-    if st.button("Update Directives & Get AI Roadmap", use_container_width=True):
+    if st.button("Update Directives & Get AI Roadmap", type="primary", use_container_width=True):
         if vision_input or goal_files:
             timestamp = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S")
             with st.spinner("Synthesizing strategic execution roadmap..."):
-                prompt = f"The user is setting new short, medium, and long term goals: '{vision_input}'. Provide a highly structured, step-by-step AI recommendation roadmap on exactly how to achieve these goals."
+                prompt = f"The user is setting new short, medium, and long term goals: '{vision_input}'. Provide a highly structured, step-by-step AI recommendation roadmap on exactly how to achieve these goals. Format your ENTIRE response strictly as crisp, actionable bullet points."
                 
                 if goal_files:
                     for gf in goal_files:
@@ -1197,12 +1222,11 @@ with tab7:
         st.write("### 📜 Active Master Targets & Roadmaps:")
         for idx, (_, row) in enumerate(g_data.iloc[::-1].iterrows()):
             row_id = str(row.get('RowID', '') or f"legacy_{row['Timestamp']}_{idx}")
-            st.markdown(f'<div class="file-card">', unsafe_allow_html=True)
-            st.markdown(f"#### {str(row.get('Notes', 'Goal')).split('|')[0]}")
-            st.markdown(str(row.get('AI_Summary', '')))
-            if st.button("🗑️ Delete Goal Roadmap", key=f"delete_g_{row_id}"):
-                delete_row(row_id, "Goals"); st.rerun()
-            st.markdown('</div>', unsafe_allow_html=True)
+            with st.container(border=True):
+                st.markdown(f"<h4 style='margin-top:0;'>{str(row.get('Notes', 'Goal')).split('|')[0]}</h4>", unsafe_allow_html=True)
+                st.markdown(str(row.get('AI_Summary', '')))
+                if st.button("🗑️ Delete Goal Roadmap", key=f"delete_g_{row_id}"):
+                    delete_row(row_id, "Goals"); st.rerun()
 
 # ==========================================
 # 🟢 MASTER GREEN SYNC TERMINAL PANEL
@@ -1213,7 +1237,7 @@ sync_section = st.selectbox("Assign log to module:", ["Business", "Learning", "H
 voice_input_widget("m_notes", "voice_sync")
 sync_notes = st.text_area("Type updates, logs, or paste Google Drive asset links here:", placeholder="Example: Placed catalog design layout updates here...", key="m_notes")
 
-if st.button("🟢 FORCE SYNC ALL DEVICES NOW", use_container_width=True):
+if st.button("🟢 FORCE SYNC ALL DEVICES NOW", type="primary", use_container_width=True):
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     commit_new_log({
         "Timestamp": timestamp, "Section": sync_section, "Score": 10, "Notes": f"Global Device Pad Log", "AI_Summary": f"### Direct Asset Update Record:\n{sync_notes}", "Raw_Content": sync_notes
