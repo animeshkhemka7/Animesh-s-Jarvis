@@ -41,39 +41,37 @@ REPO = st.secrets.get("GITHUB_REPO", "").strip()
 API_KEY = st.secrets.get("GEMINI_API_KEY", "").strip()
 
 # ==========================================
-# ⚡ UNMASKED SELF-CORRECTING REST AI ENGINE
+# ⚡ AI ENGINE — SINGLE MODEL + ONE FALLBACK
 # ==========================================
 def call_gemini_engine(prompt_text):
     if not API_KEY:
         return "⚠️ Gemini API Key missing in Settings -> Secrets."
-    
-    # Comprehensive scanning matrix to find your environment's exact supported endpoint configuration
-    versions = ['v1', 'v1beta']
-    models_to_scan = ['gemini-1.5-flash', 'gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-pro', 'gemini-pro']
-    
+
+    # Primary model + single fallback — no more scanning dead endpoints
+    models_to_try = ['gemini-3.5-flash', 'gemini-3.1-flash-lite']
+
     headers = {"Content-Type": "application/json"}
     payload = {
         "contents": [{
             "parts": [{"text": prompt_text}]
         }]
     }
-    
+
     debug_logs = []
-    for version in versions:
-        for model_name in models_to_scan:
-            url = f"https://generativelanguage.googleapis.com/{version}/models/{model_name}:generateContent?key={API_KEY}"
-            try:
-                response = requests.post(url, headers=headers, json=payload, timeout=12)
-                if response.status_code == 200:
-                    res_json = response.json()
-                    return res_json['candidates'][0]['content']['parts'][0]['text']
-                else:
-                    debug_logs.append(f"[{version}/{model_name}]: HTTP {response.status_code} - {response.text[:120]}")
-            except Exception as e:
-                debug_logs.append(f"[{version}/{model_name}]: Exception - {str(e)[:120]}")
-                continue
-                
-    return f"❌ All endpoints rejected the request. Diagnostic Log Logs:\n" + "\n".join(debug_logs[-2:])
+    for model_name in models_to_try:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={API_KEY}"
+        try:
+            response = requests.post(url, headers=headers, json=payload, timeout=30)
+            if response.status_code == 200:
+                res_json = response.json()
+                return res_json['candidates'][0]['content']['parts'][0]['text']
+            else:
+                debug_logs.append(f"[{model_name}]: HTTP {response.status_code} - {response.text[:150]}")
+        except Exception as e:
+            debug_logs.append(f"[{model_name}]: Exception - {str(e)[:150]}")
+            continue
+
+    return "❌ Gemini request failed on all models tried. Diagnostic Log:\n" + "\n".join(debug_logs)
 
 # ==========================================
 # ⚡ NATIVE LOCAL FILE TEXT EXTRACTOR
