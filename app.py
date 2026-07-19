@@ -237,6 +237,97 @@ def render_original_file_preview(file_path, original_filename):
         st.markdown(f'<iframe src="{viewer_url}" width="100%" height="500" style="border:1px solid #E2E8F0;border-radius:8px;"></iframe>', unsafe_allow_html=True)
     st.markdown(f"[⬇️ Download original file]({raw_url})")
 
+BUSINESS_VENTURES = ["Life Agro", "WellWorld Foods", "Jiva Leathers", "Khemka Woodcraft"]
+
+BUSINESS_MOTIVATION_QUOTES = [
+    ("Stay hungry, stay foolish.", "Steve Jobs"),
+    ("Culture eats strategy for breakfast.", "Peter Drucker"),
+    ("Price is what you pay, value is what you get.", "Warren Buffett"),
+    ("It always seems impossible until it's done.", "Nelson Mandela"),
+    ("Innovation distinguishes between a leader and a follower.", "Steve Jobs"),
+    ("The way to get started is to quit talking and begin doing.", "Walt Disney"),
+    ("Your most unhappy customers are your greatest source of learning.", "Jeff Bezos"),
+    ("Do not be embarrassed by failures, learn from them and start again.", "Richard Branson"),
+    ("Business opportunities are like buses — there's always another one coming.", "Richard Branson"),
+    ("Take care of your employees and they'll take care of your business.", "Richard Branson"),
+    ("I never dreamed about success, I worked for it.", "Estée Lauder"),
+    ("Risk comes from not knowing what you're doing.", "Warren Buffett"),
+    ("The best way to predict the future is to create it.", "Peter Drucker"),
+    ("Whether you think you can or you think you can't, you're right.", "Henry Ford"),
+    ("Quality means doing it right when no one is looking.", "Henry Ford"),
+    ("There is no substitute for hard work.", "Thomas Edison"),
+    ("Small opportunities are often the beginning of great enterprises.", "Demosthenes"),
+    ("The customer's perception is your reality.", "Kate Zabriskie"),
+    ("Growth and comfort do not coexist.", "Ginni Rometty"),
+    ("The elevator to success is out of order — use the stairs.", "Zig Ziglar"),
+    ("I am my own experiment, my own work of art.", "Madam C.J. Walker"),
+    ("Chase the vision, not the money — the money will follow.", "Tony Hsieh"),
+    ("If you don't build your dream, someone will hire you to build theirs.", "Tony Gaskins"),
+    ("Focus on being productive instead of busy.", "Tim Ferriss"),
+]
+
+def render_venture_panel(venture_name):
+    """Renders one venture's full panel: voice/file input for things-to-do,
+    per-venture file upload with AI summaries, and an on-demand expansion &
+    long-term strategy generator scoped only to that venture's own notes and
+    documents (matched via the Venture field, not the whole Business section)."""
+    slug = venture_name.lower().replace(" ", "_")
+    st.markdown(f"#### 🏭 {venture_name}")
+
+    voice_input_widget(f"todo_{slug}", f"voice_todo_{slug}", f"🎤 Record Things To Do — {venture_name}")
+    todo_text = st.text_area(f"Things to do — {venture_name}", key=f"todo_{slug}")
+    uploaded = st.file_uploader(f"Upload files for {venture_name} (PDF, Word, Excel, Image)", type=["pdf", "docx", "xlsx", "png", "jpg"], accept_multiple_files=True, key=f"upload_{slug}")
+
+    if st.button(f"💾 Save & Analyze — {venture_name}", key=f"save_{slug}", use_container_width=True):
+        timestamp = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S")
+        if todo_text.strip():
+            commit_new_log({
+                "Timestamp": timestamp, "Section": "Business", "Score": 7,
+                "Notes": f"📝 Things To Do | Venture: {venture_name}",
+                "AI_Summary": todo_text, "Raw_Content": todo_text, "Venture": venture_name
+            })
+        if uploaded:
+            existing_names = get_existing_filenames("Business")
+            skipped = []
+            for f in uploaded:
+                if f.name in existing_names:
+                    skipped.append(f.name)
+                    continue
+                vault_filename = f"biz_{slug}_{f.name}"
+                save_file_to_github(f.getvalue(), vault_filename)
+                single_text = extract_raw_text(f)
+                prompt = f"Analyze this document ({f.name}) uploaded for the venture '{venture_name}'. Provide a clean 8-10 line markdown bullet summary of its key findings, focusing on operational, financial, or strategic relevance:\n\n{single_text[:20000]}"
+                ai_summary = call_gemini_engine(prompt)
+                commit_new_log({
+                    "Timestamp": timestamp, "Section": "Business", "Score": 7,
+                    "Notes": f"📄 {f.name} | Venture: {venture_name}",
+                    "AI_Summary": ai_summary, "Raw_Content": single_text,
+                    "FilePath": f"vault/{vault_filename}", "Venture": venture_name
+                })
+            if skipped:
+                st.warning(f"Skipped {len(skipped)} duplicate file(s): {', '.join(skipped)}")
+        st.success(f"Saved for {venture_name}!")
+        time.sleep(0.5)
+        st.rerun()
+
+    strategy_key = f"strategy_{slug}"
+    if st.button(f"🚀 Generate Expansion & Long-Term Strategy — {venture_name}", key=f"gen_strategy_{slug}", use_container_width=True):
+        venture_rows = history_df[(history_df["Section"] == "Business") & (history_df["Venture"] == venture_name)] if not history_df.empty else pd.DataFrame()
+        valid_contents = []
+        if not venture_rows.empty:
+            valid_contents = [str(r['Raw_Content']) for _, r in venture_rows.iterrows() if not any(err in str(r['Raw_Content']).lower() for err in ["unable to compile", "connection refused", "engine error", "rejected the request"])]
+        context_text = "\n\n".join(valid_contents)[:35000] if valid_contents else f"No documents or notes logged yet for {venture_name} — base this on general best practices for this type of business."
+        strategy_prompt = f"""You are an elite business strategy advisor working directly for Animesh on his venture '{venture_name}'. Based on the notes and documents below, give concrete, specific suggestions on: (1) what more or better he could be doing to expand this business, and (2) a long-term strategic direction. Be specific to this venture, not generic filler. Format as clear markdown bullet points, 10-15 bullets total:
+
+{context_text}"""
+        with st.spinner(f"Analyzing {venture_name} and drafting strategy..."):
+            st.session_state[strategy_key] = call_gemini_engine(strategy_prompt)
+
+    if strategy_key in st.session_state:
+        st.markdown(st.session_state[strategy_key])
+
+    st.write("---")
+
 # ==========================================
 # ⚡ NATIVE LOCAL FILE TEXT EXTRACTOR
 # ==========================================
@@ -327,7 +418,7 @@ def log_row_to_csv(row_dict, filename="logs.csv"):
         existing_content = base64.b64decode(res.json().get("content")).decode("utf-8")
         df = pd.read_csv(BytesIO(existing_content.encode("utf-8")))
     else:
-        df = pd.DataFrame(columns=["Timestamp", "Section", "Score", "Notes", "AI_Summary", "Raw_Content", "RowID", "FilePath"])
+        df = pd.DataFrame(columns=["Timestamp", "Section", "Score", "Notes", "AI_Summary", "Raw_Content", "RowID", "FilePath", "Venture"])
     
     if "AI_Summary" not in df.columns:
         df["AI_Summary"] = ""
@@ -337,6 +428,8 @@ def log_row_to_csv(row_dict, filename="logs.csv"):
         df["RowID"] = ""
     if "FilePath" not in df.columns:
         df["FilePath"] = ""
+    if "Venture" not in df.columns:
+        df["Venture"] = ""
         
     df = pd.concat([df, pd.DataFrame([row_dict])], ignore_index=True)
     payload = {
@@ -347,7 +440,7 @@ def log_row_to_csv(row_dict, filename="logs.csv"):
     requests.put(f"https://api.github.com/repos/{REPO}/contents/{filename}", headers=headers, json=payload)
 
 def load_live_database_uncached():
-    if not TOKEN or not REPO: return pd.DataFrame(columns=["Timestamp", "Section", "Score", "Notes", "AI_Summary", "Raw_Content", "RowID", "FilePath"])
+    if not TOKEN or not REPO: return pd.DataFrame(columns=["Timestamp", "Section", "Score", "Notes", "AI_Summary", "Raw_Content", "RowID", "FilePath", "Venture"])
     url = f"https://api.github.com/repos/{REPO}/contents/logs.csv?t={int(time.time())}"
     headers = {
         "Authorization": f"token {TOKEN}",
@@ -370,6 +463,8 @@ def load_live_database_uncached():
                 loaded_df["RowID"] = ""
             if "FilePath" not in loaded_df.columns:
                 loaded_df["FilePath"] = ""
+            if "Venture" not in loaded_df.columns:
+                loaded_df["Venture"] = ""
 
             # Backfill missing/blank RowIDs so every row — including legacy rows
             # that share an identical Timestamp from a bulk upload — gets a
@@ -380,7 +475,7 @@ def load_live_database_uncached():
             return loaded_df
     except:
         pass
-    return pd.DataFrame(columns=["Timestamp", "Section", "Score", "Notes", "AI_Summary", "Raw_Content", "RowID", "FilePath"])
+    return pd.DataFrame(columns=["Timestamp", "Section", "Score", "Notes", "AI_Summary", "Raw_Content", "RowID", "FilePath", "Venture"])
 
 def commit_new_log(row_dict):
     if "AI_Summary" not in row_dict:
@@ -391,6 +486,8 @@ def commit_new_log(row_dict):
         row_dict["RowID"] = uuid.uuid4().hex
     if "FilePath" not in row_dict:
         row_dict["FilePath"] = ""
+    if "Venture" not in row_dict:
+        row_dict["Venture"] = ""
         
     if st.session_state["cached_db"].empty:
         st.session_state["cached_db"] = pd.DataFrame([row_dict])
@@ -450,6 +547,8 @@ if "RowID" not in st.session_state["cached_db"].columns:
     st.session_state["cached_db"]["RowID"] = ""
 if "FilePath" not in st.session_state["cached_db"].columns:
     st.session_state["cached_db"]["FilePath"] = ""
+if "Venture" not in st.session_state["cached_db"].columns:
+    st.session_state["cached_db"]["Venture"] = ""
 
 st.title("🎯 Khemka Life OS")
 
@@ -882,31 +981,65 @@ Your complete output must total between 50 and 60 lines across all categories co
 # ==========================================
 with tab3:
     st.header("🏢 Venture Strategy Dashboard")
-    
+
+    # ---------- SUBSECTION 1: VENTURE SNAPSHOT (per-venture todos, uploads, AI strategy) ----------
+    st.markdown("### 🏭 Venture Snapshot")
+    for venture in BUSINESS_VENTURES:
+        render_venture_panel(venture)
+
+    # ---------- SUBSECTION 2: AI ADVISOR FOR IDEAS ----------
+    st.markdown("### 🎯 Ask Your Business Advisor")
+    voice_input_widget("advisor_question", "voice_advisor")
+    advisor_question = st.text_area("Share a business idea, thought, or strategy question:", key="advisor_question")
+    if st.button("🎯 Get My Advisor's Take", use_container_width=True, key="get_advisor_take"):
+        if advisor_question.strip():
+            advisor_prompt = f"""You are an elite personal business advisor to Animesh, a CA/CFA/MBA entrepreneur running Life Agro (fortified rice), WellWorld Foods (exports), Jiva Leathers (vegan leather), and Khemka Woodcraft (timber import), with prior investment banking experience. He has shared the following idea, thought, or strategy question:
+
+"{advisor_question}"
+
+Respond as a sharp, honest personal advisor would: give your genuine read on the idea, flag real risks or blind spots, and give concrete, specific suggestions on how to make it work or improve it. Be direct and practical, not generic cheerleading. Format as clear markdown with short paragraphs or bullet points."""
+            with st.spinner("Consulting your advisor..."):
+                advisor_answer = call_gemini_engine(advisor_prompt)
+            if "advisor_history" not in st.session_state:
+                st.session_state["advisor_history"] = []
+            st.session_state["advisor_history"].insert(0, {"question": advisor_question, "answer": advisor_answer, "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M")})
+            st.rerun()
+        else:
+            st.warning("Please share your idea or question first.")
+
+    if "advisor_history" in st.session_state and st.session_state["advisor_history"]:
+        for i, exchange in enumerate(st.session_state["advisor_history"]):
+            preview = exchange['question'][:60] + ("..." if len(exchange['question']) > 60 else "")
+            with st.expander(f"💭 {preview}  ({exchange['timestamp']})", expanded=(i == 0)):
+                st.markdown(exchange["answer"])
+    st.write("---")
+
+    # ---------- SUBSECTION 3: PROGRESS TRACKER (live, no history) ----------
+    st.markdown("### 📊 Today's Business Progress Tracker")
+    business_habit_items = [
+        ("📵 Deep work blocks everyday without phone", "track_deep_work"),
+        ("💡 Ideate & deep thinking everyday (stocks, new businesses)", "track_ideate"),
+        ("🤝 Delegate daily execution tasks efficiently", "track_delegate"),
+        ("✅ Completing Things to Do diligently everyday", "track_complete_todos"),
+    ]
+    for label, key in business_habit_items:
+        if key not in st.session_state:
+            st.session_state[key] = 5
+        st.slider(label, 1, 10, key=key)
+    st.caption("Live self-ratings for today — these reset when the app reloads and aren't saved to history.")
+    st.write("---")
+
+    # ---------- SUBSECTION 4: MOTIVATIONAL QUOTE (curated business leaders, rotates daily) ----------
+    st.markdown("### 💬 Today's Business Motivation")
+    biz_day_index = datetime.now().timetuple().tm_yday % len(BUSINESS_MOTIVATION_QUOTES)
+    biz_quote_text, biz_quote_author = BUSINESS_MOTIVATION_QUOTES[biz_day_index]
+    st.info(f"_{biz_quote_text}_\n\n— {biz_quote_author}")
+    st.write("---")
+
+    # ---------- SUBSECTION 5: GENERAL FILE UPLOAD, SUMMARY & RAW VIEW (unchanged behavior) ----------
+    st.markdown("### 📂 General Business Documents")
     if not history_df.empty:
         b_data = history_df[history_df["Section"] == "Business"]
-        
-        st.markdown("### ⚡ Master Business Strategy Rules")
-        if st.button("✨ GENERATE 50-60 LINE STRATEGIC BLUEPRINT FROM ALL VENTURE FILES", use_container_width=True, key="gen_b_rules"):
-            valid_contents = [str(r['Raw_Content']) for _, r in b_data.iterrows() if not any(err in str(r['Raw_Content']).lower() for err in ["unable to compile", "ceiling met", "v1beta", "connection refused", "engine error", "timeout", "status 404", "rejected the request"])]
-            if valid_contents:
-                combined_text = "\n\n".join(valid_contents)
-                with st.spinner(f"Compiling production directives from {len(valid_contents)} files..."):
-                    prompt = f"""You are an elite strategy consultant working for Animesh across Life Agro (fortified rice kernels), WellWorld Foods (exports), Jiva Leathers (vegan leather/corporate gifting), and Khemka Woodcraft (timber import). Review the FULL text content below from ALL venture documents — there may be several distinct files. Pull the best, most varied strategic points from EACH document, not just one, so the output reflects the whole set rather than a single source.
-
-Organize the output into 4-6 clearly labeled categories relevant to his ventures (for example: 'Export & Compliance', 'Manufacturing & Supply Chain', 'Design & Differentiation', 'Distribution & Logistics', 'Brand & Positioning') — pick categories that actually fit the content present. Under each category header, list specific, actionable rules.
-
-Your complete output must total between 50 and 60 lines across all categories combined. Prioritize variety — draw distinct points from as many different source documents as possible rather than concentrating on one:
-
-{combined_text[:50000]}"""
-                    st.session_state["b_master_rules"] = call_gemini_engine(prompt)
-            else:
-                st.warning("No active corporate strategy text content files found in database archives yet.")
-                
-        if "b_master_rules" in st.session_state:
-            st.info(st.session_state["b_master_rules"])
-            st.write("---")
-            
         if not b_data.empty: 
             st.write("### 📜 Corporate Summaries & Specifications:")
             for idx, (_, row) in enumerate(b_data.iloc[::-1].iterrows()):
@@ -977,6 +1110,8 @@ Your complete output must total between 50 and 60 lines across all categories co
                         "AI_Summary": ai_summary,
                         "Raw_Content": single_doc_text
                     })
+            if skipped:
+                st.warning(f"Skipped {len(skipped)} duplicate file(s) already logged here: {', '.join(skipped)}. Delete the existing card first if you want to re-process one.")
         else:
             timestamp = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S")
             commit_new_log({
