@@ -3,3 +3,4 @@ google-generativeai
 pandas
 yfinance
 streamlit-mic-recorder
+pypdf
