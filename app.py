@@ -8,6 +8,7 @@ import time
 import uuid
 import json
 import zipfile
+import pypdf
 import xml.etree.ElementTree as ET
 from io import BytesIO
 from datetime import datetime
@@ -328,6 +329,38 @@ def render_venture_panel(venture_name):
 
     st.write("---")
 
+def describe_image_with_gemini(image_bytes, filename):
+    """Uses Gemini's vision capability to read and transcribe the visible
+    content of an uploaded image (e.g. a screenshot of a portfolio, chart,
+    or handwritten note), returning it as usable text content for downstream
+    analysis — this is what actually makes 'upload any format' work for
+    images, rather than silently ignoring them."""
+    if not API_KEY:
+        return "[Image content unavailable — Gemini API Key missing.]"
+    image_b64 = base64.b64encode(image_bytes).decode("utf-8")
+    ext = filename.lower().split('.')[-1]
+    mime_type = "image/png" if ext == "png" else "image/jpeg"
+    models_to_try = ['gemini-3.5-flash', 'gemini-3.1-flash-lite']
+    headers = {"Content-Type": "application/json"}
+    payload = {
+        "contents": [{
+            "parts": [
+                {"inline_data": {"mime_type": mime_type, "data": image_b64}},
+                {"text": "Carefully transcribe all visible text in this image (numbers, labels, tables, handwriting) exactly as shown, and briefly describe any charts or visual data present. Return this as clean, structured plain text that fully captures the image's content for further analysis."}
+            ]
+        }]
+    }
+    for model_name in models_to_try:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={API_KEY}"
+        try:
+            response = requests.post(url, headers=headers, json=payload, timeout=30)
+            if response.status_code == 200:
+                res_json = response.json()
+                return res_json['candidates'][0]['content']['parts'][0]['text'].strip()
+        except Exception:
+            continue
+    return "[Could not extract content from this image via Gemini vision.]"
+
 # ==========================================
 # ⚡ NATIVE LOCAL FILE TEXT EXTRACTOR
 # ==========================================
@@ -354,6 +387,19 @@ def extract_raw_text(uploaded_file):
             return pd.read_csv(BytesIO(file_bytes)).to_string()
         elif name.endswith(".xlsx") or name.endswith(".xls"):
             return pd.read_excel(BytesIO(file_bytes)).to_string()
+        elif name.endswith(".pdf"):
+            try:
+                reader = pypdf.PdfReader(BytesIO(file_bytes))
+                pages_text = [page.extract_text() or "" for page in reader.pages]
+                combined = "\n".join(pages_text).strip()
+                if combined:
+                    return combined
+                else:
+                    return "[PDF text extraction found no selectable text — this may be a scanned/image-based PDF with no embedded text layer.]"
+            except Exception as e:
+                return f"[PDF extraction note: {str(e)}]"
+        elif name.endswith((".png", ".jpg", ".jpeg")):
+            return describe_image_with_gemini(file_bytes, name)
         else:
             return f"[Raw text content stream extracted locally for: {uploaded_file.name}]"
     except Exception as e:
@@ -418,7 +464,7 @@ def log_row_to_csv(row_dict, filename="logs.csv"):
         existing_content = base64.b64decode(res.json().get("content")).decode("utf-8")
         df = pd.read_csv(BytesIO(existing_content.encode("utf-8")))
     else:
-        df = pd.DataFrame(columns=["Timestamp", "Section", "Score", "Notes", "AI_Summary", "Raw_Content", "RowID", "FilePath", "Venture"])
+        df = pd.DataFrame(columns=["Timestamp", "Section", "Score", "Notes", "AI_Summary", "Raw_Content", "RowID", "FilePath", "Venture", "Term"])
     
     if "AI_Summary" not in df.columns:
         df["AI_Summary"] = ""
@@ -430,6 +476,8 @@ def log_row_to_csv(row_dict, filename="logs.csv"):
         df["FilePath"] = ""
     if "Venture" not in df.columns:
         df["Venture"] = ""
+    if "Term" not in df.columns:
+        df["Term"] = ""
         
     df = pd.concat([df, pd.DataFrame([row_dict])], ignore_index=True)
     payload = {
@@ -440,7 +488,7 @@ def log_row_to_csv(row_dict, filename="logs.csv"):
     requests.put(f"https://api.github.com/repos/{REPO}/contents/{filename}", headers=headers, json=payload)
 
 def load_live_database_uncached():
-    if not TOKEN or not REPO: return pd.DataFrame(columns=["Timestamp", "Section", "Score", "Notes", "AI_Summary", "Raw_Content", "RowID", "FilePath", "Venture"])
+    if not TOKEN or not REPO: return pd.DataFrame(columns=["Timestamp", "Section", "Score", "Notes", "AI_Summary", "Raw_Content", "RowID", "FilePath", "Venture", "Term"])
     url = f"https://api.github.com/repos/{REPO}/contents/logs.csv?t={int(time.time())}"
     headers = {
         "Authorization": f"token {TOKEN}",
@@ -465,6 +513,8 @@ def load_live_database_uncached():
                 loaded_df["FilePath"] = ""
             if "Venture" not in loaded_df.columns:
                 loaded_df["Venture"] = ""
+            if "Term" not in loaded_df.columns:
+                loaded_df["Term"] = ""
 
             # Backfill missing/blank RowIDs so every row — including legacy rows
             # that share an identical Timestamp from a bulk upload — gets a
@@ -475,7 +525,7 @@ def load_live_database_uncached():
             return loaded_df
     except:
         pass
-    return pd.DataFrame(columns=["Timestamp", "Section", "Score", "Notes", "AI_Summary", "Raw_Content", "RowID", "FilePath", "Venture"])
+    return pd.DataFrame(columns=["Timestamp", "Section", "Score", "Notes", "AI_Summary", "Raw_Content", "RowID", "FilePath", "Venture", "Term"])
 
 def commit_new_log(row_dict):
     if "AI_Summary" not in row_dict:
@@ -488,6 +538,8 @@ def commit_new_log(row_dict):
         row_dict["FilePath"] = ""
     if "Venture" not in row_dict:
         row_dict["Venture"] = ""
+    if "Term" not in row_dict:
+        row_dict["Term"] = ""
         
     if st.session_state["cached_db"].empty:
         st.session_state["cached_db"] = pd.DataFrame([row_dict])
@@ -515,6 +567,66 @@ def delete_row(row_id, section):
         ~((st.session_state["cached_db"]["RowID"] == row_id) & (st.session_state["cached_db"]["Section"] == section))
     ].reset_index(drop=True)
     sync_entire_db_to_github()
+
+def update_goal_score(row_id, new_score):
+    """Persists a goal's progress slider value — unlike the other habit
+    trackers in this app (which are live-only), goals need real persistence
+    since they're tracked over weeks/months, not reset daily."""
+    st.session_state["cached_db"].loc[
+        (st.session_state["cached_db"]["RowID"] == row_id) & (st.session_state["cached_db"]["Section"] == "GoalTracker"),
+        "Score"
+    ] = new_score
+    sync_entire_db_to_github()
+
+def fetch_market_snapshot_data():
+    """Pulls real, live index/currency/commodity levels via yfinance — this
+    is the actual data behind the daily Finance snapshot. Only the narrative
+    interpretation layered on top is AI-generated; these numbers are real."""
+    tickers = {
+        "Nifty 50": "^NSEI",
+        "Sensex": "^BSESN",
+        "India VIX": "^INDIAVIX",
+        "USD/INR": "USDINR=X",
+        "Crude Oil (Brent)": "BZ=F",
+    }
+    snapshot = {}
+    for label, symbol in tickers.items():
+        try:
+            hist = yf.Ticker(symbol).history(period="5d")
+            if not hist.empty:
+                latest = hist['Close'].iloc[-1]
+                prev = hist['Close'].iloc[-2] if len(hist) > 1 else latest
+                change_pct = ((latest - prev) / prev * 100) if prev else 0
+                snapshot[label] = f"{latest:.2f} ({change_pct:+.2f}%)"
+            else:
+                snapshot[label] = "Data unavailable"
+        except Exception:
+            snapshot[label] = "Data unavailable"
+    return snapshot
+
+GOALS_MOTIVATION_QUOTES = [
+    "A goal without a plan is just a wish written down.",
+    "Persistence turns the impossible into the merely difficult, and the difficult into done.",
+    "Small daily progress beats occasional bursts of ambition.",
+    "The gap between where you are and where you want to be is called consistency.",
+    "You don't need to see the whole staircase, just the next step.",
+    "Discipline is remembering what you want most over what you want now.",
+    "Every long-term goal survives on short-term follow-through.",
+    "Clarity of vision is worth more than intensity of effort without direction.",
+    "Setbacks are data, not verdicts — adjust and continue.",
+    "The goals that matter most rarely feel urgent — protect time for them anyway.",
+    "Momentum is built by finishing, not by starting.",
+    "A vision written down is a decision your future self can hold you to.",
+    "Patience is the price of anything worth building.",
+    "Progress hides inside boring repetition, not dramatic leaps.",
+    "The plan will change. The commitment to the outcome shouldn't.",
+    "You rise to the level of your systems, not the height of your goals.",
+    "Review your goals often enough that drifting becomes impossible to ignore.",
+    "What gets measured and revisited actually gets achieved.",
+    "Ambition without follow-up is just an idea with good intentions.",
+    "The best goals are specific enough to know when you've actually won.",
+]
+
 
 def get_existing_filenames(section):
     """Returns the set of filenames already logged in a given section, parsed
@@ -549,6 +661,8 @@ if "FilePath" not in st.session_state["cached_db"].columns:
     st.session_state["cached_db"]["FilePath"] = ""
 if "Venture" not in st.session_state["cached_db"].columns:
     st.session_state["cached_db"]["Venture"] = ""
+if "Term" not in st.session_state["cached_db"].columns:
+    st.session_state["cached_db"]["Term"] = ""
 
 st.title("🎯 Khemka Life OS")
 
@@ -898,8 +1012,9 @@ Your complete output must total between 50 and 60 lines across all categories co
                     st.rerun()
                 st.markdown('</div>', unsafe_allow_html=True)
         
-    media_name = st.text_input("Source Batch Reference Title:")
-    uploaded_books = st.file_uploader("Drop books or summaries in bulk:", type=["pdf", "docx", "xlsx", "txt"], accept_multiple_files=True, key="l_bulk")
+    voice_input_widget("media_name", "voice_media_name")
+    media_name = st.text_input("Source Batch Reference Title:", key="media_name")
+    uploaded_books = st.file_uploader("Drop books or summaries in bulk:", type=["pdf", "docx", "xlsx", "png", "jpg", "txt"], accept_multiple_files=True, key="l_bulk")
     
     if st.button("Inject Batch to Library Vault", use_container_width=True):
         if uploaded_books:
@@ -947,6 +1062,7 @@ Your complete output must total between 50 and 60 lines across all categories co
 
     # ---------- SUBSECTION 5: BOOK / PODCAST SUMMARIZER ----------
     st.markdown("### 🔎 Summarize Any Book or Podcast")
+    voice_input_widget("book_query_input", "voice_book_query")
     book_query = st.text_input("Enter a book or podcast name:", key="book_query_input")
     if st.button("✨ Summarize Key Learnings", use_container_width=True, key="summarize_book_btn"):
         if book_query.strip():
@@ -1080,11 +1196,12 @@ Respond as a sharp, honest personal advisor would: give your genuine read on the
                     st.rerun()
                 st.markdown('</div>', unsafe_allow_html=True)
             
-    biz_name = st.text_input("Venture Name:", value="Premium Vegan Leather Goods Brand")
+    voice_input_widget("biz_name", "voice_biz_name")
+    biz_name = st.text_input("Venture Name:", value="Premium Vegan Leather Goods Brand", key="biz_name")
     biz_score = st.slider("Current Execution Momentum", 1, 10, 7, key="b_slider")
     voice_input_widget("biz_notes", "voice_biz")
     biz_notes = st.text_area("Operational moves or bottlenecks:", value="Designing modular men's sling bags and phone card holders for export to North America, Europe, and Middle East. Differentiating utility from local competitors.", key="biz_notes")
-    biz_docs = st.file_uploader("Upload engineering data sheets or invoices in bulk:", type=["xlsx", "csv", "pdf", "docx"], accept_multiple_files=True, key="b_bulk")
+    biz_docs = st.file_uploader("Upload engineering data sheets or invoices in bulk:", type=["xlsx", "csv", "pdf", "docx", "png", "jpg"], accept_multiple_files=True, key="b_bulk")
     
     if st.button("Analyze & Save Venture Metrics", use_container_width=True):
         if biz_docs:
@@ -1359,16 +1476,121 @@ If anything in what he shared suggests he may be in real emotional crisis or hav
 
 # ==========================================
 # 6. INDIAN STOCK MARKET ENGINE
-# ==========================================
 with tab6:
     st.header("📉 Market Trading Terminal")
-    
+    st.caption("⚠️ AI-generated informational content, not professional financial advice. Consult a licensed advisor before acting on any of this.")
+
+    # ---------- SUBSECTION 1: DAILY INDIAN MARKET SNAPSHOT (real live data + AI narrative, cached per day) ----------
+    st.markdown("### ☀️ Today's Indian Market Snapshot")
+    finance_today_str = datetime.now().strftime("%Y-%m-%d")
+    if st.session_state.get("market_snapshot_date") != finance_today_str:
+        with st.spinner("Pulling live market data and compiling today's snapshot..."):
+            snapshot_data = fetch_market_snapshot_data()
+            snapshot_lines = "\n".join([f"- {k}: {v}" for k, v in snapshot_data.items()])
+            snapshot_prompt = f"""You are a senior Indian equities strategist preparing Animesh's daily market briefing. Here is today's real, live market data:
+
+{snapshot_lines}
+
+Using this real data, write a structured briefing with these markdown bold-headed sections:
+
+**Market Snapshot** — interpret the index levels and VIX above; what they suggest about market mood today.
+
+**Global & Macro Indicators** — interpret the USD/INR and crude oil levels above, and note any other globally relevant macro or geopolitical themes you're aware of that could affect Indian markets (acknowledge if your knowledge may not reflect breaking news, since you do not have live internet access).
+
+**Sectors in Focus** — 2-3 sectors likely to see activity given the current environment.
+
+**Investment Ideas** — 2-3 specific stock ideas, each with: the stock name, your rationale, expected return potential (rough %), and suggested timeframe (e.g. 3-6 months, 1-2 years). Clearly state these are illustrative ideas for consideration, not guaranteed outcomes.
+
+Be direct and specific, not generic filler."""
+            st.session_state["market_snapshot"] = call_gemini_engine(snapshot_prompt)
+            st.session_state["market_snapshot_data"] = snapshot_data
+        st.session_state["market_snapshot_date"] = finance_today_str
+
+    if "market_snapshot_data" in st.session_state:
+        snap = st.session_state["market_snapshot_data"]
+        snap_items = list(snap.items())
+        cols = st.columns(len(snap_items))
+        for col, (label, value) in zip(cols, snap_items):
+            col.metric(label, value)
+
+    st.markdown(st.session_state.get("market_snapshot", ""))
+    st.caption("Index/VIX/currency/crude figures above are live via Yahoo Finance. Narrative and 'developments' framing are AI interpretation, not a live news feed.")
+    if st.button("🔄 Refresh Today's Snapshot", key="refresh_market_snapshot"):
+        if "market_snapshot_date" in st.session_state:
+            del st.session_state["market_snapshot_date"]
+        st.rerun()
+    st.write("---")
+
+    # ---------- SUBSECTION 2: DEEP STOCK RESEARCH (technical + fundamental, visual, clear verdict) ----------
+    st.markdown("### 🔬 Deep Stock Research")
+    voice_input_widget("ticker", "voice_ticker")
+    ticker = st.text_input("Enter NSE Ticker Symbol (e.g. RELIANCE.NS, TCS.NS):", value="RELIANCE.NS", key="ticker")
+    if st.button("Run Deep Stock Research", use_container_width=True, key="run_deep_research"):
+        timestamp = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S")
+        try:
+            hist = yf.Ticker(ticker).history(period="1y")
+            if not hist.empty:
+                current_price = hist['Close'].iloc[-1]
+                ma50 = hist['Close'].rolling(50).mean().iloc[-1]
+                ma200 = hist['Close'].rolling(200).mean().iloc[-1]
+                high_52wk = hist['Close'].max()
+                low_52wk = hist['Close'].min()
+                avg_volume = hist['Volume'].mean()
+
+                mcol1, mcol2, mcol3 = st.columns(3)
+                mcol1.metric("Current Price", f"₹{current_price:.2f}")
+                mcol2.metric("50-Day MA", f"₹{ma50:.2f}")
+                mcol3.metric("200-Day MA", f"₹{ma200:.2f}")
+                mcol4, mcol5, mcol6 = st.columns(3)
+                mcol4.metric("52-Week High", f"₹{high_52wk:.2f}")
+                mcol5.metric("52-Week Low", f"₹{low_52wk:.2f}")
+                mcol6.metric("Avg Volume", f"{avg_volume:,.0f}")
+
+                st.line_chart(hist['Close'])
+
+                metrics_summary = f"Current: ₹{current_price:.2f} | 50MA: ₹{ma50:.2f} | 200MA: ₹{ma200:.2f} | 52wk High: ₹{high_52wk:.2f} | 52wk Low: ₹{low_52wk:.2f} | Avg Volume: {avg_volume:,.0f}"
+
+                research_prompt = f"""You are a senior equity research analyst covering {ticker} on the Indian market. Real technical data: {metrics_summary}
+
+Provide a structured research note with these exact markdown bold headers:
+
+**Technical Read** — interpret the price vs. moving averages and 52-week range above.
+
+**Fundamental Considerations** — what you know about this company's business, sector positioning, and financial health (acknowledge if specific recent financials are outside your knowledge).
+
+**Recommendation: BUY / SELL / HOLD** — state one clear verdict in bold.
+
+**Rationale** — 3-4 sentences justifying the verdict.
+
+**Expected Return Potential** — a rough % range.
+
+**Suggested Timeframe** — e.g. 3-6 months, 1-2 years."""
+                ai_summary = call_gemini_engine(research_prompt)
+                st.markdown(ai_summary)
+
+                commit_new_log({
+                    "Timestamp": timestamp,
+                    "Section": "Finance",
+                    "Score": 10,
+                    "Notes": f"Deep Research: {ticker}",
+                    "AI_Summary": f"**Data Metrics:** {metrics_summary}\n\n{ai_summary}",
+                    "Raw_Content": metrics_summary
+                })
+            else:
+                st.error(f"No data found for ticker '{ticker}'. Double-check the symbol (e.g. RELIANCE.NS for NSE-listed stocks).")
+        except Exception as err:
+            st.error(f"Research error: {err}")
+    st.write("---")
+
+    # ---------- SUBSECTION 3: PORTFOLIO EVALUATION (real per-holding AI recommendations) ----------
+    st.markdown("### 💼 Portfolio Evaluation")
     if not history_df.empty:
         f_data = history_df[history_df["Section"] == "Finance"]
-        if not f_data.empty:
-            st.write("### 📜 Market Summaries & Risk Metrics:")
-            for idx, (_, row) in enumerate(f_data.iloc[::-1].iterrows()):
-                title_slug = str(row.get('Notes', 'Finance Update')).split('|')[0]
+        portfolio_data = f_data[f_data["Notes"].astype(str).str.contains("Statement Update", na=False)]
+        if not portfolio_data.empty:
+            st.write("### 📜 Portfolio Reviews:")
+            for idx, (_, row) in enumerate(portfolio_data.iloc[::-1].iterrows()):
+                title_slug = str(row.get('Notes', 'Portfolio Update')).split('|')[0]
                 row_id = str(row.get('RowID', '') or f"legacy_{row['Timestamp']}_{idx}")
                 
                 st.markdown(f'<div class="file-card">', unsafe_allow_html=True)
@@ -1379,62 +1601,18 @@ with tab6:
                 
                 raw_text = str(row.get("Raw_Content", ""))
                 if raw_text.strip() != "" and not any(err in raw_text.lower() for err in ["unable to compile", "connection refused", "engine error", "rejected the request"]):
-                    with st.expander("📂 Click to view original raw spreadsheet text"):
-                        st.text_area("Spreadsheet Extracted Array", value=raw_text, height=200, disabled=True, key=f"raw_f_{row_id}")
+                    with st.expander("📂 Click to view original extracted content"):
+                        st.text_area("Extracted Content", value=raw_text, height=200, disabled=True, key=f"raw_pf_{row_id}")
 
-                if st.button("🗑️ Delete this entry", key=f"delete_f_{row_id}"):
+                if st.button("🗑️ Delete this entry", key=f"delete_pf_{row_id}"):
                     delete_row(row_id, "Finance")
                     st.success("Entry deleted.")
                     time.sleep(0.3)
                     st.rerun()
                 st.markdown('</div>', unsafe_allow_html=True)
 
-    if st.button("☀️ Pull Indian Pre-Market Framework Analysis", use_container_width=True):
-        timestamp = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S")
-        nifty_close = 0.0
-        try:
-            nifty_df = yf.Ticker("^NSEI").history(period="2d")
-            nifty_close = nifty_df['Close'].iloc[-1] if not nifty_df.empty else 0.0
-        except Exception:
-            pass
-        
-        ai_summary = call_gemini_engine(f"Provide an assertive technical market layout brief for an Indian equities operator. Index validation state: Nifty 50 close tracking near {nifty_close}. Highlight 3 alpha trading sectors for outperformance.")
-                
-        commit_new_log({
-            "Timestamp": timestamp,
-            "Section": "Finance",
-            "Score": 10,
-            "Notes": f"Nifty Position Context: ₹{nifty_close:.2f}",
-            "AI_Summary": ai_summary,
-            "Raw_Content": f"Nifty Ticker Feed Close Value: {nifty_close}"
-        })
-        st.rerun()
-                    
-    st.markdown("---")
-    ticker = st.text_input("Enter NSE Ticker Symbol (e.g. RELIANCE.NS, TCS.NS):", value="RELIANCE.NS")
-    if st.button("Run Fundamental + Technical Market Audit", use_container_width=True):
-        timestamp = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S")
-        try:
-            hist = yf.Ticker(ticker).history(period="6mo")
-            if not hist.empty:
-                metrics = f"Price: ₹{hist['Close'].iloc[-1]:.2f} | 50MA: ₹{hist['Close'].rolling(50).mean().iloc[-1]:.2f} | 200MA: ₹{hist['Close'].rolling(200).mean().iloc[-1]:.2f}"
-                ai_summary = call_gemini_engine(f"Hedge fund analysis report for {ticker}. Metrics: {metrics}. Provide explicit target support layers and a clear Buy/Hold/Sell recommendation.")
-                
-                commit_new_log({
-                    "Timestamp": timestamp,
-                    "Section": "Finance",
-                    "Score": 10,
-                    "Notes": f"Equity Core Assessment: {ticker}",
-                    "AI_Summary": f"**Data Metrics:** {metrics}\n\n{ai_summary}",
-                    "Raw_Content": metrics
-                })
-                st.rerun()
-        except Exception as err: st.error(f"Audit error: {err}")
-
-    st.markdown("---")
-    st.subheader("📋 Structural Portfolio Evaluation")
-    port_files = st.file_uploader("Drop broker spreadsheets/statements (Select Multiple):", type=["xlsx", "csv"], accept_multiple_files=True, key="p_bulk")
-    if st.button("Execute Portfolio Audit Risk Check", use_container_width=True):
+    port_files = st.file_uploader("Drop your portfolio statement (PDF, Excel, Word, or Image):", type=["pdf", "docx", "xlsx", "csv", "png", "jpg"], accept_multiple_files=True, key="p_bulk")
+    if st.button("Execute Portfolio Audit Risk Check", use_container_width=True, key="run_portfolio_audit"):
         if port_files:
             existing_names = get_existing_filenames("Finance")
             skipped = []
@@ -1444,19 +1622,24 @@ with tab6:
                     continue
                 timestamp = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S")
                 save_file_to_github(pf.getvalue(), f"portfolio_{pf.name}")
-                single_sheet_text = extract_raw_text(pf)
+                with st.spinner(f"Analyzing portfolio holdings in {pf.name}..."):
+                    single_sheet_text = extract_raw_text(pf)
+                    portfolio_prompt = f"""You are a personal wealth and portfolio advisor reviewing Animesh's portfolio statement below. For each stock or holding you can identify, give a specific recommendation (Buy more / Hold / Reduce / Sell) with a brief rationale. Then give an overall portfolio-level assessment: diversification, risk concentration, and 2-3 top-priority actions. If the data format makes specific holdings hard to parse, say so honestly and give what analysis you can rather than inventing figures. Format as clear markdown, with a sub-header per holding where possible:
+
+{single_sheet_text[:25000]}"""
+                    ai_summary = call_gemini_engine(portfolio_prompt)
                 
                 commit_new_log({
                     "Timestamp": timestamp,
                     "Section": "Finance",
                     "Score": 10,
                     "Notes": f"📄 {pf.name} | Statement Update",
-                    "AI_Summary": f"### Brokerage Log Sync Verified\nRaw statement text matrix for {pf.name} successfully registered to screen review frame layers.",
+                    "AI_Summary": ai_summary,
                     "Raw_Content": single_sheet_text
                 })
             if skipped:
                 st.warning(f"Skipped {len(skipped)} duplicate file(s) already logged here: {', '.join(skipped)}.")
-            st.success("🎉 Portfolio structural breakdown synced to server files successfully!")
+            st.success("🎉 Portfolio reviewed with personalized recommendations!")
             time.sleep(0.5)
             st.rerun()
 
@@ -1464,26 +1647,89 @@ with tab6:
 # 7. LONG-TERM GOALS
 # ==========================================
 with tab7:
-    st.header("🚀 Strategic Goal Vectoring")
-    
-    if not history_df.empty:
-        g_data = history_df[history_df["Section"] == "Goals"]
-        if not g_data.empty: 
-            st.line_chart(g_data.set_index("Timestamp")["Score"])
-            st.write("### 📜 Active Master Targets:")
-            for _, row in g_data.iloc[::-1].iterrows():
-                with st.expander(f"📝 View Summary ({row['Timestamp']})"):
-                    if "AI_Summary" in row and pd.notna(row["AI_Summary"]) and row["AI_Summary"] != "":
-                        st.markdown(row["AI_Summary"])
-                st.write("---")
-        
-    voice_input_widget("vision_input", "voice_vision")
-    vision_input = st.text_area("Define master 5 & 10-year blueprints:", value="Build a premier international sustainable design and luxury leather export empire with established corporate gifting logistics footprint across India.", key="vision_input")
-    if st.button("Update Long-Term Directives", use_container_width=True):
-        commit_new_log({"Timestamp": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S"), "Section": "Goals", "Score": 10, "Notes": "Visions updated.", "AI_Summary": f"### Master Blueprint Plan:\n{vision_input}", "Raw_Content": vision_input})
-        st.success("🎉 Vision matrices locked in and synchronized globally!")
-        time.sleep(0.5)
-        st.rerun()
+    st.header("🚀 Goals")
+
+    # ---------- SUBSECTION 1: GOALS PROGRESS TRACKER (persisted, grouped by term, AI suggestions per goal) ----------
+    st.markdown("### 📊 Goals Progress Tracker")
+
+    def render_goal_term_section(term_label, emoji):
+        st.markdown(f"#### {emoji} {term_label}")
+        term_data = history_df[(history_df["Section"] == "GoalTracker") & (history_df["Term"] == term_label)] if not history_df.empty else pd.DataFrame()
+        if term_data.empty:
+            st.caption(f"No {term_label.lower()} goals added yet.")
+            return
+        for idx, (_, row) in enumerate(term_data.iloc[::-1].iterrows()):
+            row_id = str(row.get('RowID', '') or f"legacy_{row['Timestamp']}_{idx}")
+            goal_title = str(row.get('Notes', 'Goal')).split('|')[0].replace("📌", "").strip()
+            ai_suggestions = str(row.get('AI_Summary', ''))
+            try:
+                current_score = int(float(row.get('Score', 5)))
+            except (ValueError, TypeError):
+                current_score = 5
+            current_score = min(max(current_score, 1), 10)
+
+            st.markdown(f'<div class="file-card">', unsafe_allow_html=True)
+            st.markdown(f"**{goal_title}**")
+            new_score = st.slider("Progress", 1, 10, current_score, key=f"goal_slider_{row_id}")
+            if st.button("💾 Update Progress", key=f"update_goal_{row_id}"):
+                update_goal_score(row_id, new_score)
+                st.success("Progress updated!")
+                time.sleep(0.3)
+                st.rerun()
+            with st.expander("💡 AI Suggestions on how to achieve this"):
+                st.markdown(ai_suggestions)
+            if st.button("🗑️ Delete this goal", key=f"delete_goal_{row_id}"):
+                delete_row(row_id, "GoalTracker")
+                st.success("Goal deleted.")
+                time.sleep(0.3)
+                st.rerun()
+            st.markdown('</div>', unsafe_allow_html=True)
+
+    render_goal_term_section("Short Term", "🎯")
+    render_goal_term_section("Medium Term", "🚀")
+    render_goal_term_section("Long Term", "🏔️")
+    st.write("---")
+
+    st.markdown("#### ➕ Add a New Goal")
+    goal_term = st.selectbox("Goal Term:", ["Short Term", "Medium Term", "Long Term"], key="new_goal_term")
+    voice_input_widget("new_goal_text", "voice_new_goal")
+    new_goal_text = st.text_area("Describe your goal:", key="new_goal_text")
+    new_goal_files = st.file_uploader("Attach supporting files (optional — PDF, Word, Excel, Image):", type=["pdf", "docx", "xlsx", "png", "jpg"], accept_multiple_files=True, key="new_goal_files")
+
+    if st.button("➕ Add Goal & Get AI Suggestions", use_container_width=True, key="add_goal_btn"):
+        if new_goal_text.strip():
+            file_texts = []
+            if new_goal_files:
+                for gf in new_goal_files:
+                    file_texts.append(extract_raw_text(gf))
+            combined_context = new_goal_text + ("\n\n" + "\n\n".join(file_texts) if file_texts else "")
+            suggestion_prompt = f"""You are an elite personal achievement coach advising Animesh on a {goal_term.lower()} goal he has just set:
+
+"{combined_context[:15000]}"
+
+Give specific, practical, step-by-step suggestions on how to achieve this goal. Format as clear markdown bullet points, 6-10 bullets, tailored to the specifics of what he described — not generic advice."""
+            with st.spinner("Generating suggestions for your new goal..."):
+                ai_suggestions = call_gemini_engine(suggestion_prompt)
+            commit_new_log({
+                "Timestamp": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "Section": "GoalTracker",
+                "Score": 5,
+                "Notes": f"📌 {new_goal_text[:80]} | Term: {goal_term}",
+                "AI_Summary": ai_suggestions,
+                "Raw_Content": combined_context,
+                "Term": goal_term
+            })
+            st.success("Goal added with AI suggestions!")
+            time.sleep(0.5)
+            st.rerun()
+        else:
+            st.warning("Please describe your goal first.")
+    st.write("---")
+
+    # ---------- SUBSECTION 2: DAILY MOTIVATIONAL QUOTE (curated, rotates daily) ----------
+    st.markdown("### 💬 Today's Goal-Achievement Motivation")
+    goals_day_index = datetime.now().timetuple().tm_yday % len(GOALS_MOTIVATION_QUOTES)
+    st.info(f"_{GOALS_MOTIVATION_QUOTES[goals_day_index]}_")
 
 # ==========================================
 # 🟢 MASTER GREEN SYNC TERMINAL PANEL (BOTTOM UI)
