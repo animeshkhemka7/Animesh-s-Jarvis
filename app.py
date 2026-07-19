@@ -1131,66 +1131,154 @@ Respond as a sharp, honest personal advisor would: give your genuine read on the
 # 4. PEACE & MINDSET MODULE
 # ==========================================
 with tab4:
-    st.header("🧘 Mindset Shielding & Planetary Coordinates")
-    
-    if not history_df.empty:
-        m_data = history_df[history_df["Section"] == "Mindset"]
-        if not m_data.empty:
-            st.write("### 🌌 Active Mindset Summaries & Astro Maps:")
-            for idx, (_, row) in enumerate(m_data.iloc[::-1].iterrows()):
-                title_slug = str(row.get('Notes', 'Mindset Item')).split('|')[0]
-                timestamp_str = str(row['Timestamp'])
-                row_id = str(row.get('RowID', '') or f"legacy_{timestamp_str}_{idx}")
-                ai_sum = str(row.get('AI_Summary', ''))
-                raw_text = str(row.get("Raw_Content", ""))
-                
-                is_corrupted = any(err in ai_sum.lower() for err in ["unable to compile", "ceiling met", "v1beta", "historical document", "engine error", "timeout", "connection", "status 404", "❌", "error"]) or ai_sum.strip() == ""
-                has_clean_raw = raw_text.strip() != "" and not any(err in raw_text.lower() for err in ["unable to compile", "connection refused", "engine error", "rejected the request"])
-                
-                st.markdown(f'<div class="file-card">', unsafe_allow_html=True)
-                st.markdown(f"### {title_slug}")
-                st.caption(f"Alignment Window: {timestamp_str}")
-                
-                if is_corrupted:
-                    st.warning("📋 Summary data row uncompiled due to a server connection failure.")
-                else:
-                    st.markdown(ai_sum)
+    st.header("🧘 Peace & Mindset")
 
-                if has_clean_raw:
-                    btn_label = "✨ Generate Missing 8-10 Line Summary Now" if is_corrupted else "🔄 Regenerate this summary"
-                    if st.button(btn_label, key=f"repair_m_{row_id}"):
-                        with st.spinner("Extracting coordinates from chart data..."):
-                            repair_prompt = f"Provide a clean, comprehensive 8-to-10 line deep-dive content summary detailing the key findings and exactly what this document states. Focus on alignment rules, remedies, and instructions. Your entire output response must be strictly between 8 and 10 lines long:\n\n{raw_text[:20000]}"
-                            regenerate_summary_for_row(row_id, "Mindset", raw_text, repair_prompt)
-                        st.success("Summary generated and saved permanently!")
-                        time.sleep(0.5)
-                        st.rerun()
-                    with st.expander("📂 Click to view original raw file text"):
-                        st.text_area("Original Content Stream", value=raw_text, height=200, disabled=True, key=f"raw_m_{row_id}")
+    # ---------- SUBSECTION 1: PROGRESS TRACKER (live, no history) ----------
+    st.markdown("### 📊 Today's Peace Progress Tracker")
+    peace_habit_items = [
+        ("🙏 Meditation & Puja everyday", "track_meditation_puja"),
+        ("✨ Manifestation routine everyday", "track_manifestation_routine"),
+        ("📓 Journalling every night", "track_journalling"),
+        ("😌 Total control of positive mindset & emotions", "track_mindset_control"),
+        ("🔮 Follow astrological suggestions and remedies", "track_astro_remedies"),
+        ("⏳ Preserve energy, time & focus like treasures", "track_preserve_energy"),
+        ("🚫 Stay away from negative people & relatives", "track_avoid_negativity"),
+    ]
+    for label, key in peace_habit_items:
+        if key not in st.session_state:
+            st.session_state[key] = 5
+        st.slider(label, 1, 10, key=key)
+    st.caption("Live self-ratings for today — these reset when the app reloads and aren't saved to history.")
+    st.write("---")
 
-                if st.button("🗑️ Delete this entry", key=f"delete_m_{row_id}"):
-                    delete_row(row_id, "Mindset")
-                    st.success("Entry deleted.")
-                    time.sleep(0.3)
-                    st.rerun()
-                st.markdown('</div>', unsafe_allow_html=True)
+    # ---------- SUBSECTION 2: DAILY QUOTE / MEDITATION TECHNIQUE / MANIFESTATION PRACTICE (AI-generated, cached per day) ----------
+    st.markdown("### 💬 Daily Peace & Positivity")
+    peace_today_str = datetime.now().strftime("%Y-%m-%d")
+    if st.session_state.get("peace_content_date") != peace_today_str:
+        peace_prompt = """Provide three short sections for a daily wellness check-in, each clearly headed with a markdown bold header:
 
-    if st.button("Fetch Daily Meditation & Energy Shield Protocol", use_container_width=True):
-        timestamp = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S")
-        ai_summary = call_gemini_engine("Provide an executive mindset validation drill, deep rhythmic breathing guidelines, and explicit protocols to maintain absolute workspace concentration and isolate energy from critical family members.")
-        commit_new_log({
-            "Timestamp": timestamp,
-            "Section": "Mindset",
-            "Score": 10,
-            "Notes": "Meditation Shield Request",
-            "AI_Summary": ai_summary,
-            "Raw_Content": "Natively generated inside AI memory matrix coordinates."
-        })
-        st.rerun()
+**Quote of the Day** — one short, original, unattributed motivational quote (under 25 words) about mental peace, happiness, or positivity.
+
+**Meditation & Breathing Technique** — one specific, practical meditation or breathing technique to try today, explained in 3-4 concise sentences.
+
+**Manifestation Practice** — one specific manifestation technique or exercise to try today, explained in 3-4 concise sentences.
+
+Keep the whole response tight and practical, no filler."""
+        with st.spinner("Fetching today's peace & positivity content..."):
+            st.session_state["peace_content"] = call_gemini_engine(peace_prompt)
+        st.session_state["peace_content_date"] = peace_today_str
+    st.markdown(st.session_state.get("peace_content", ""))
+    st.write("---")
+
+    # ---------- SUBSECTION 3: KRISHNA — AI SPIRITUAL ADVISOR ----------
+    st.markdown("### 🕉️ Ask Krishna — Your Spiritual Advisor")
+    voice_input_widget("krishna_question", "voice_krishna")
+    krishna_question = st.text_area("Share what's on your mind — feelings, doubts, grievances, or your current mood:", key="krishna_question")
+    if st.button("🙏 Seek Guidance", use_container_width=True, key="ask_krishna"):
+        if krishna_question.strip():
+            krishna_prompt = f"""You are a wise, compassionate spiritual guide, drawing on the wisdom and teachings of Lord Krishna from the Bhagavad Gita, speaking personally to Animesh. He has shared the following with you:
+
+"{krishna_question}"
+
+Respond with warmth, wisdom, and genuine emotional insight — help him understand and process what he's feeling, offer perspective on staying calm and centered, and give practical guidance on how to handle the situation with grace and clarity, in the spirit of Krishna's teachings on duty, detachment, and inner peace. Keep it personal and grounded, not preachy or generic.
+
+If anything in what he shared suggests he may be in real emotional crisis or having thoughts of self-harm, gently and clearly encourage him to also reach out to a mental health professional or a trusted person immediately, alongside any spiritual guidance you offer."""
+            with st.spinner("Seeking guidance..."):
+                krishna_answer = call_gemini_engine(krishna_prompt)
+            if "krishna_history" not in st.session_state:
+                st.session_state["krishna_history"] = []
+            st.session_state["krishna_history"].insert(0, {"question": krishna_question, "answer": krishna_answer, "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M")})
+            st.rerun()
+        else:
+            st.warning("Please share what's on your mind first.")
+
+    if "krishna_history" in st.session_state and st.session_state["krishna_history"]:
+        for i, exchange in enumerate(st.session_state["krishna_history"]):
+            preview = exchange['question'][:60] + ("..." if len(exchange['question']) > 60 else "")
+            with st.expander(f"🙏 {preview}  ({exchange['timestamp']})", expanded=(i == 0)):
+                st.markdown(exchange["answer"])
+    st.write("---")
+
+    # ---------- SUBSECTION 4: ASTROLOGICAL GUIDANCE (daily reading, cached per day + chart vault) ----------
+    st.markdown("### 🔮 Astrological Guidance")
+
+    astro_data = history_df[history_df["Section"] == "Mindset"] if not history_df.empty else pd.DataFrame()
+    astro_valid_contents = []
+    if not astro_data.empty:
+        astro_valid_contents = [str(r['Raw_Content']) for _, r in astro_data.iterrows() if not any(err in str(r['Raw_Content']).lower() for err in ["unable to compile", "connection refused", "engine error", "rejected the request"])]
+
+    astro_today_str = datetime.now().strftime("%Y-%m-%d")
+    if astro_valid_contents:
+        if st.session_state.get("astro_reading_date") != astro_today_str:
+            astro_context = "\n\n".join(astro_valid_contents)[:35000]
+            astro_prompt = f"""You are an expert Vedic astrologer analyzing Animesh's uploaded birth charts below. Provide today's astrological reading in this exact structure with markdown bold headers:
+
+**Quick Summary** — 3-4 sentences giving the headline read for today.
+
+**Short-Term Outlook (this week)** — a few practical, specific points.
+
+**Long-Term Outlook** — a few practical, specific points on broader life themes currently in play.
+
+**Remedies & Recommendations** — specific, actionable suggestions (e.g. gemstones to consider, favorable days or timings, practices to follow) to help maximize luck and navigate current planetary influences.
+
+Base this on the chart data below. If the chart data is incomplete or unclear, say so honestly rather than inventing specifics:
+
+{astro_context}"""
+            with st.spinner("Consulting the charts for today's reading..."):
+                st.session_state["astro_reading"] = call_gemini_engine(astro_prompt)
+            st.session_state["astro_reading_date"] = astro_today_str
+        st.markdown(st.session_state.get("astro_reading", ""))
+        if st.button("🔄 Refresh Today's Reading", key="refresh_astro"):
+            if "astro_reading_date" in st.session_state:
+                del st.session_state["astro_reading_date"]
+            st.rerun()
+        st.write("---")
+    else:
+        st.caption("Upload a birth chart below to get your daily astrological reading.")
+
+    if not astro_data.empty:
+        st.write("### 📜 Uploaded Charts:")
+        for idx, (_, row) in enumerate(astro_data.iloc[::-1].iterrows()):
+            title_slug = str(row.get('Notes', 'Chart')).split('|')[0]
+            timestamp_str = str(row['Timestamp'])
+            row_id = str(row.get('RowID', '') or f"legacy_{timestamp_str}_{idx}")
+            ai_sum = str(row.get('AI_Summary', ''))
+            raw_text = str(row.get("Raw_Content", ""))
             
-    st.markdown("---")
-    st.subheader("🌌 Natal Chart Synthesis Drawer")
-    astro_files = st.file_uploader("Drop planetary maps/birth charts (Select Multiple):", type=["pdf", "png", "jpg"], accept_multiple_files=True, key="a_bulk")
+            is_corrupted = any(err in ai_sum.lower() for err in ["unable to compile", "ceiling met", "v1beta", "historical document", "engine error", "timeout", "connection", "status 404", "❌", "error"]) or ai_sum.strip() == ""
+            has_clean_raw = raw_text.strip() != "" and not any(err in raw_text.lower() for err in ["unable to compile", "connection refused", "engine error", "rejected the request"])
+            
+            st.markdown(f'<div class="file-card">', unsafe_allow_html=True)
+            st.markdown(f"### {title_slug}")
+            st.caption(f"Alignment Window: {timestamp_str}")
+            
+            if is_corrupted:
+                st.warning("📋 Summary data row uncompiled due to a server connection failure.")
+            else:
+                st.markdown(ai_sum)
+
+            if has_clean_raw:
+                btn_label = "✨ Generate Missing 8-10 Line Summary Now" if is_corrupted else "🔄 Regenerate this summary"
+                if st.button(btn_label, key=f"repair_m_{row_id}"):
+                    with st.spinner("Extracting coordinates from chart data..."):
+                        repair_prompt = f"Provide a clean, comprehensive 8-to-10 line deep-dive content summary detailing the key findings and exactly what this document states. Focus on alignment rules, remedies, and instructions. Your entire output response must be strictly between 8 and 10 lines long:\n\n{raw_text[:20000]}"
+                        regenerate_summary_for_row(row_id, "Mindset", raw_text, repair_prompt)
+                    st.success("Summary generated and saved permanently!")
+                    time.sleep(0.5)
+                    st.rerun()
+                with st.expander("📂 Click to view original raw file text"):
+                    st.text_area("Original Content Stream", value=raw_text, height=200, disabled=True, key=f"raw_m_{row_id}")
+
+            if st.button("🗑️ Delete this entry", key=f"delete_m_{row_id}"):
+                delete_row(row_id, "Mindset")
+                if "astro_reading_date" in st.session_state:
+                    del st.session_state["astro_reading_date"]
+                st.success("Entry deleted.")
+                time.sleep(0.3)
+                st.rerun()
+            st.markdown('</div>', unsafe_allow_html=True)
+
+    astro_files = st.file_uploader("Drop planetary maps/birth charts (any format — PDF, image, Word, Excel):", type=["pdf", "png", "jpg", "docx", "xlsx"], accept_multiple_files=True, key="a_bulk")
     if st.button("Execute Astro Mapping Alignment", use_container_width=True):
         if astro_files:
             existing_names = get_existing_filenames("Mindset")
@@ -1216,32 +1304,58 @@ with tab4:
                 })
             if skipped:
                 st.warning(f"Skipped {len(skipped)} duplicate file(s) already logged here: {', '.join(skipped)}.")
+            if "astro_reading_date" in st.session_state:
+                del st.session_state["astro_reading_date"]
             st.rerun()
 
 # ==========================================
 # 5. RELATIONSHIPS MODULE
 # ==========================================
 with tab5:
-    st.header("🤝 Interpersonal Network Alignment")
-    
-    if not history_df.empty:
-        r_data = history_df[history_df["Section"] == "Relationships"]
-        if not r_data.empty: 
-            st.line_chart(r_data.set_index("Timestamp")["Score"])
-            st.write("### 📜 Communication Alignment Feed:")
-            for _, row in r_data.iloc[::-1].iterrows():
-                with st.expander(f"📝 View Summary ({row['Timestamp']})"):
-                    st.write(row.get("Notes", "No notes logged."))
-                st.write("---")
-        
-    r_score = st.slider("Rate relational harmony level", 1, 10, 7, key="r_slider")
-    voice_input_widget("r_notes", "voice_r")
-    r_notes = st.text_area("Key communication metrics or dynamics tracker:", key="r_notes")
-    if st.button("Archive Relationship Log Entry", use_container_width=True):
-        commit_new_log({"Timestamp": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S"), "Section": "Relationships", "Score": r_score, "Notes": r_notes, "AI_Summary": "Manual Entry Recorded.", "Raw_Content": r_notes})
-        st.success("🎉 Network logs compiled and safely synced!")
-        time.sleep(0.5)
-        st.rerun()
+    st.header("🤝 Relationships")
+
+    # ---------- SUBSECTION 1: PROGRESS TRACKER (live, no history) ----------
+    st.markdown("### 📊 Today's Relationships Progress Tracker")
+    relationship_habit_items = [
+        ("📵 Less screen time and more interaction", "track_less_screen_interaction"),
+        ("🎉 More personal outings & activities", "track_personal_outings"),
+        ("😌 Less reactive & more calm", "track_less_reactive"),
+        ("✨ Manifestation for better relationships", "track_relationship_manifestation"),
+    ]
+    for label, key in relationship_habit_items:
+        if key not in st.session_state:
+            st.session_state[key] = 5
+        st.slider(label, 1, 10, key=key)
+    st.caption("Live self-ratings for today — these reset when the app reloads and aren't saved to history.")
+    st.write("---")
+
+    # ---------- SUBSECTION 2: KRISHNA — AI RELATIONSHIP ADVISOR ----------
+    st.markdown("### 🕉️ Ask Krishna — Relationship Guidance")
+    voice_input_widget("krishna_relationship_question", "voice_krishna_rel")
+    krishna_relationship_question = st.text_area("Share what's on your mind about a relationship — feelings, doubts, grievances, or your current mood:", key="krishna_relationship_question")
+    if st.button("🙏 Seek Guidance", use_container_width=True, key="ask_krishna_rel"):
+        if krishna_relationship_question.strip():
+            krishna_rel_prompt = f"""You are a wise, compassionate spiritual guide, drawing on the wisdom and teachings of Lord Krishna from the Bhagavad Gita, speaking personally to Animesh about his relationships. He has shared the following with you:
+
+"{krishna_relationship_question}"
+
+Respond with warmth, wisdom, and genuine emotional insight — help him understand what he's feeling, offer perspective on approaching the relationship with patience and clarity, and give practical guidance on how to handle the situation in the best possible manner, in the spirit of Krishna's teachings on duty, compassion, and right action.
+
+If anything in what he shared suggests he may be in real emotional crisis or having thoughts of self-harm, gently and clearly encourage him to also reach out to a mental health professional or a trusted person immediately, alongside any spiritual guidance you offer."""
+            with st.spinner("Seeking guidance..."):
+                krishna_rel_answer = call_gemini_engine(krishna_rel_prompt)
+            if "krishna_relationship_history" not in st.session_state:
+                st.session_state["krishna_relationship_history"] = []
+            st.session_state["krishna_relationship_history"].insert(0, {"question": krishna_relationship_question, "answer": krishna_rel_answer, "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M")})
+            st.rerun()
+        else:
+            st.warning("Please share what's on your mind first.")
+
+    if "krishna_relationship_history" in st.session_state and st.session_state["krishna_relationship_history"]:
+        for i, exchange in enumerate(st.session_state["krishna_relationship_history"]):
+            preview = exchange['question'][:60] + ("..." if len(exchange['question']) > 60 else "")
+            with st.expander(f"🙏 {preview}  ({exchange['timestamp']})", expanded=(i == 0)):
+                st.markdown(exchange["answer"])
 
 # ==========================================
 # 6. INDIAN STOCK MARKET ENGINE
