@@ -219,6 +219,24 @@ HEALTH_MOTIVATION_QUOTES = [
     "The best time to build the habit was a year ago. The second best time is today.",
 ]
 
+def render_original_file_preview(file_path, original_filename):
+    """Renders the original uploaded file inline, using its public raw GitHub
+    URL. Images render directly; PDFs/Word/Excel render via Google's public
+    document viewer (works for public repos without any extra API key).
+    Assumes the repo's default branch is 'main' — adjust below if yours is
+    named differently (e.g. 'master')."""
+    if not file_path or not REPO:
+        st.caption("Original file preview unavailable for this entry (uploaded before this feature was added).")
+        return
+    raw_url = f"https://raw.githubusercontent.com/{REPO}/main/{file_path}"
+    ext = original_filename.lower().split('.')[-1] if '.' in original_filename else ''
+    if ext in ['png', 'jpg', 'jpeg', 'gif', 'webp']:
+        st.image(raw_url, use_container_width=True)
+    elif ext in ['pdf', 'docx', 'xlsx', 'xls', 'doc', 'ppt', 'pptx']:
+        viewer_url = f"https://docs.google.com/viewer?url={raw_url}&embedded=true"
+        st.markdown(f'<iframe src="{viewer_url}" width="100%" height="500" style="border:1px solid #E2E8F0;border-radius:8px;"></iframe>', unsafe_allow_html=True)
+    st.markdown(f"[⬇️ Download original file]({raw_url})")
+
 # ==========================================
 # ⚡ NATIVE LOCAL FILE TEXT EXTRACTOR
 # ==========================================
@@ -309,7 +327,7 @@ def log_row_to_csv(row_dict, filename="logs.csv"):
         existing_content = base64.b64decode(res.json().get("content")).decode("utf-8")
         df = pd.read_csv(BytesIO(existing_content.encode("utf-8")))
     else:
-        df = pd.DataFrame(columns=["Timestamp", "Section", "Score", "Notes", "AI_Summary", "Raw_Content", "RowID"])
+        df = pd.DataFrame(columns=["Timestamp", "Section", "Score", "Notes", "AI_Summary", "Raw_Content", "RowID", "FilePath"])
     
     if "AI_Summary" not in df.columns:
         df["AI_Summary"] = ""
@@ -317,6 +335,8 @@ def log_row_to_csv(row_dict, filename="logs.csv"):
         df["Raw_Content"] = ""
     if "RowID" not in df.columns:
         df["RowID"] = ""
+    if "FilePath" not in df.columns:
+        df["FilePath"] = ""
         
     df = pd.concat([df, pd.DataFrame([row_dict])], ignore_index=True)
     payload = {
@@ -327,7 +347,7 @@ def log_row_to_csv(row_dict, filename="logs.csv"):
     requests.put(f"https://api.github.com/repos/{REPO}/contents/{filename}", headers=headers, json=payload)
 
 def load_live_database_uncached():
-    if not TOKEN or not REPO: return pd.DataFrame(columns=["Timestamp", "Section", "Score", "Notes", "AI_Summary", "Raw_Content", "RowID"])
+    if not TOKEN or not REPO: return pd.DataFrame(columns=["Timestamp", "Section", "Score", "Notes", "AI_Summary", "Raw_Content", "RowID", "FilePath"])
     url = f"https://api.github.com/repos/{REPO}/contents/logs.csv?t={int(time.time())}"
     headers = {
         "Authorization": f"token {TOKEN}",
@@ -348,6 +368,8 @@ def load_live_database_uncached():
                 loaded_df["Raw_Content"] = ""
             if "RowID" not in loaded_df.columns:
                 loaded_df["RowID"] = ""
+            if "FilePath" not in loaded_df.columns:
+                loaded_df["FilePath"] = ""
 
             # Backfill missing/blank RowIDs so every row — including legacy rows
             # that share an identical Timestamp from a bulk upload — gets a
@@ -358,7 +380,7 @@ def load_live_database_uncached():
             return loaded_df
     except:
         pass
-    return pd.DataFrame(columns=["Timestamp", "Section", "Score", "Notes", "AI_Summary", "Raw_Content", "RowID"])
+    return pd.DataFrame(columns=["Timestamp", "Section", "Score", "Notes", "AI_Summary", "Raw_Content", "RowID", "FilePath"])
 
 def commit_new_log(row_dict):
     if "AI_Summary" not in row_dict:
@@ -367,6 +389,8 @@ def commit_new_log(row_dict):
         row_dict["Raw_Content"] = ""
     if not row_dict.get("RowID"):
         row_dict["RowID"] = uuid.uuid4().hex
+    if "FilePath" not in row_dict:
+        row_dict["FilePath"] = ""
         
     if st.session_state["cached_db"].empty:
         st.session_state["cached_db"] = pd.DataFrame([row_dict])
@@ -424,6 +448,8 @@ if "Raw_Content" not in st.session_state["cached_db"].columns:
     st.session_state["cached_db"]["Raw_Content"] = ""
 if "RowID" not in st.session_state["cached_db"].columns:
     st.session_state["cached_db"]["RowID"] = ""
+if "FilePath" not in st.session_state["cached_db"].columns:
+    st.session_state["cached_db"]["FilePath"] = ""
 
 st.title("🎯 Khemka Life OS")
 
@@ -679,12 +705,12 @@ Format as a clean numbered list from 1 to however many tips you give (between 15
 # ==========================================
 with tab2:
     st.header("📚 Master Knowledge Bank")
-    
+
+    # ---------- SUBSECTION 1: 50-60 LINE GROUPED BLUEPRINT ----------
     if not history_df.empty:
         l_data = history_df[history_df["Section"] == "Learning"]
         st.metric(label="Total Library Assets Stacked", value=len(l_data))
         
-        # 🎯 50-60 LINE GROUPED MASTER RULES ENGINE
         st.markdown("### ⚡ Master Life Implementation Sheet")
         if st.button("✨ GENERATE 50-60 LINE TAILORMADE BLUEPRINT FROM ALL FILES", use_container_width=True, key="gen_l_rules"):
             valid_contents = [str(r['Raw_Content']) for _, r in l_data.iterrows() if not any(err in str(r['Raw_Content']).lower() for err in ["unable to compile", "ceiling met", "v1beta", "connection refused", "engine error", "timeout", "status 404", "rejected the request"])]
@@ -694,7 +720,7 @@ with tab2:
                 with st.spinner(f"Compiling content from {len(valid_contents)} files across your library..."):
                     prompt = f"""You are an elite high-performance mentor working for Animesh, an entrepreneur running Life Agro, WellWorld Foods, Jiva Leathers, and Khemka Woodcraft. Review the FULL text content below from ALL books and records in his library — there may be several distinct documents. Pull the best, most varied insights from EACH document, not just the first or most prominent one, so the final output genuinely represents the whole library rather than a single source.
 
-Organize the output into 4-6 clearly labeled categories relevant to his situation (for example: 'Mindset & Psychology', 'Execution & Discipline', 'Relationships & Influence', 'Decision-Making Under Pressure', 'Leadership & Delegation') — pick categories that actually fit the content present. Under each category header, list specific, actionable, tailor-made points.
+Organize the output into 4-6 clearly labeled categories relevant to his situation (for example: 'Mindset & Psychology', 'Execution & Discipline', 'Relationships & Influence', 'Decision-Making Under Pressure', 'Leadership & Delegation') — pick categories that actually fit the content present. Under each category header, list specific, actionable, tailor-made points as bullet points for easy scanning.
 
 Your complete output must total between 50 and 60 lines across all categories combined. Prioritize variety — draw distinct points from as many different source documents as possible rather than concentrating on one:
 
@@ -705,16 +731,38 @@ Your complete output must total between 50 and 60 lines across all categories co
                 
         if "l_master_rules" in st.session_state:
             st.info(st.session_state["l_master_rules"])
-            st.write("---")
-            
+    st.write("---")
+
+    # ---------- SUBSECTION 2: PROGRESS TRACKER (live, no history) ----------
+    st.markdown("### 📊 Today's Learning Progress Tracker")
+    learning_habit_items = [
+        ("📖 Read good books", "track_read_books"),
+        ("🎬 Watch good content only", "track_good_content"),
+        ("🤖 Proper use and learning of AI", "track_ai_learning"),
+        ("🗣️ Interaction & discussions with the right people", "track_right_people"),
+        ("🎵 Develop good hobbies (singing, instrument, boxing etc.)", "track_hobbies"),
+    ]
+    for label, key in learning_habit_items:
+        if key not in st.session_state:
+            st.session_state[key] = 5
+        st.slider(label, 1, 10, key=key)
+    st.caption("Live self-ratings for today — these reset when the app reloads and aren't saved to history.")
+    st.write("---")
+
+    # ---------- SUBSECTION 3: DOCUMENT VAULT (original file preview + bulleted summaries) ----------
+    st.markdown("### 📂 Uploaded Documents")
+    if not history_df.empty:
+        l_data = history_df[history_df["Section"] == "Learning"]
         if not l_data.empty:
             st.write("### 📜 Library Summaries & Document Reader:")
             for idx, (_, row) in enumerate(l_data.iloc[::-1].iterrows()):
                 ai_sum = str(row.get('AI_Summary', ''))
                 raw_text = str(row.get("Raw_Content", ""))
+                file_path = str(row.get('FilePath', '') or '')
                 timestamp_str = str(row['Timestamp'])
                 row_id = str(row.get('RowID', '') or f"legacy_{timestamp_str}_{idx}")
                 title_slug = str(row.get('Notes', 'Book File')).split('|')[0]
+                original_filename = title_slug.replace("📄", "").strip()
                 
                 is_corrupted = any(err in ai_sum.lower() for err in ["unable to compile", "ceiling met", "v1beta", "historical document", "engine error", "timeout", "connection", "status 404", "❌", "error"]) or ai_sum.strip() == ""
                 has_clean_raw = raw_text.strip() != "" and not any(err in raw_text.lower() for err in ["unable to compile", "connection refused", "engine error", "rejected the request"])
@@ -732,13 +780,17 @@ Your complete output must total between 50 and 60 lines across all categories co
                     btn_label = "✨ Generate Missing 8-10 Line Summary Now" if is_corrupted else "🔄 Regenerate this summary"
                     if st.button(btn_label, key=f"repair_l_{row_id}"):
                         with st.spinner("Extracting book content directly from text matrix..."):
-                            repair_prompt = f"Analyze the text content of this book document. Provide a clean, thorough summary detailing the exact key findings and what this specific document states. Focus on central lessons, actionable business insights, and execution frameworks. Your entire output response must be strictly between 8 and 10 lines long:\n\n{raw_text[:25000]}"
+                            repair_prompt = f"Analyze the text content of this book document. Provide a clean, thorough summary detailing the exact key findings and what this specific document states. Focus on central lessons, actionable business insights, and execution frameworks. Format the summary as clear markdown bullet points (8-10 bullets), each a distinct, specific insight — not a prose paragraph:\n\n{raw_text[:25000]}"
                             regenerate_summary_for_row(row_id, "Learning", raw_text, repair_prompt)
                         st.success("Summary generated and saved permanently!")
                         time.sleep(0.5)
                         st.rerun()
                     with st.expander("📂 Click to view original raw file text"):
                         st.text_area("Original Extracted Content", value=raw_text, height=250, disabled=True, key=f"raw_l_{row_id}")
+
+                if file_path:
+                    with st.expander("🖼️ View original file (same format as uploaded)"):
+                        render_original_file_preview(file_path, original_filename)
 
                 if st.button("🗑️ Delete this entry", key=f"delete_l_{row_id}"):
                     delete_row(row_id, "Learning")
@@ -760,10 +812,11 @@ Your complete output must total between 50 and 60 lines across all categories co
                     continue
                 timestamp = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S")
                 with st.spinner(f"Extracting text parameters for: {b.name}..."):
-                    save_file_to_github(b.getvalue(), f"library_{media_name.replace(' ','_')}_{b.name}")
+                    vault_filename = f"library_{media_name.replace(' ','_')}_{b.name}"
+                    save_file_to_github(b.getvalue(), vault_filename)
                     single_book_text = extract_raw_text(b)
                     
-                    prompt = f"Analyze the text extracted from this specific document ({b.name}). Provide a clean, deep-dive content summary detailing the key findings and exactly what this document states. Cover all central themes, workflows, and actionable workflows explicitly. Your entire output response must be strictly between 8 and 10 lines long:\n\n{single_book_text[:28000]}"
+                    prompt = f"Analyze the text extracted from this specific document ({b.name}). Provide a clean, deep-dive content summary detailing the key findings and exactly what this document states. Cover all central themes, workflows, and actionable workflows explicitly. Format the summary as clear markdown bullet points (8-10 bullets), each a distinct, specific insight — not a prose paragraph:\n\n{single_book_text[:28000]}"
                     ai_summary = call_gemini_engine(prompt)
                     
                     commit_new_log({
@@ -772,11 +825,55 @@ Your complete output must total between 50 and 60 lines across all categories co
                         "Score": 10, 
                         "Notes": f"📄 {b.name} | Batch: {media_name}",
                         "AI_Summary": ai_summary,
-                        "Raw_Content": single_book_text
+                        "Raw_Content": single_book_text,
+                        "FilePath": f"vault/{vault_filename}"
                     })
             if skipped:
                 st.warning(f"Skipped {len(skipped)} duplicate file(s) already in your library: {', '.join(skipped)}. Delete the existing card first if you want to re-process one.")
             st.success("🎉 All new documents successfully isolated, analyzed, and synced!")
+            time.sleep(0.5)
+            st.rerun()
+    st.write("---")
+
+    # ---------- SUBSECTION 4: DAILY MOTIVATIONAL QUOTE (AI-generated, cached per day) ----------
+    st.markdown("### 💬 Today's Learning Motivation")
+    today_str = datetime.now().strftime("%Y-%m-%d")
+    if st.session_state.get("learning_quote_date") != today_str:
+        quote_prompt = "Give me one short, powerful, original motivational quote (a single sentence, under 25 words) about continuous learning, reading, curiosity, or self-development. Do not attribute it to any real named person — present it as general wisdom, unattributed. Return ONLY the quote text itself, no quotation marks, no attribution, no commentary."
+        with st.spinner("Fetching today's learning motivation..."):
+            st.session_state["learning_quote"] = call_gemini_engine(quote_prompt)
+        st.session_state["learning_quote_date"] = today_str
+    st.info(f"_{st.session_state.get('learning_quote', '')}_")
+    st.write("---")
+
+    # ---------- SUBSECTION 5: BOOK / PODCAST SUMMARIZER ----------
+    st.markdown("### 🔎 Summarize Any Book or Podcast")
+    book_query = st.text_input("Enter a book or podcast name:", key="book_query_input")
+    if st.button("✨ Summarize Key Learnings", use_container_width=True, key="summarize_book_btn"):
+        if book_query.strip():
+            summarize_prompt = f"""Provide a deep-dive summary of the key learnings, frameworks, and actionable insights from '{book_query}'. If this is a well-known book or podcast you have real knowledge of, draw on that. If you are not confident you know this specific title's actual content, say so honestly rather than inventing details. Format the summary as clear markdown bullet points (8-15 bullets), each one a distinct, specific insight — not generic filler."""
+            with st.spinner(f"Researching key learnings from '{book_query}'..."):
+                st.session_state["book_summary_result"] = call_gemini_engine(summarize_prompt)
+                st.session_state["book_summary_title"] = book_query
+        else:
+            st.warning("Please enter a book or podcast name first.")
+
+    if "book_summary_result" in st.session_state:
+        st.markdown(f"#### {st.session_state['book_summary_title']}")
+        st.markdown(st.session_state["book_summary_result"])
+        if st.button("➕ Add to My Knowledge Bank", use_container_width=True, key="add_book_to_bank"):
+            commit_new_log({
+                "Timestamp": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "Section": "Learning",
+                "Score": 10,
+                "Notes": f"📄 {st.session_state['book_summary_title']} | AI-Researched Summary",
+                "AI_Summary": st.session_state["book_summary_result"],
+                "Raw_Content": st.session_state["book_summary_result"],
+                "FilePath": ""
+            })
+            st.success("Added to your Knowledge Bank!")
+            del st.session_state["book_summary_result"]
+            del st.session_state["book_summary_title"]
             time.sleep(0.5)
             st.rerun()
 
@@ -880,8 +977,6 @@ Your complete output must total between 50 and 60 lines across all categories co
                         "AI_Summary": ai_summary,
                         "Raw_Content": single_doc_text
                     })
-            if skipped:
-                st.warning(f"Skipped {len(skipped)} duplicate file(s) already logged here: {', '.join(skipped)}. Delete the existing card first if you want to re-process one.")
         else:
             timestamp = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S")
             commit_new_log({
